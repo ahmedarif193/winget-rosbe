@@ -77,13 +77,20 @@ SHA256="$(awk '/InstallerSha256:/ {print $2}' "$INSTALLER_YAML")"
 PR_TITLE="New version: ${PKG_ID} version ${VERSION}"
 PR_BODY="### Update from [RosBE Modern](https://github.com/ahmedarif193/winget-rosbe) :rocket:
 
-- **Package**: \`${PKG_ID}\`
 - **Version**: \`${VERSION}\`
 - **Release**: https://github.com/ahmedarif193/winget-rosbe/releases/tag/v${VERSION}
 - **Installer SHA256 (x64)**: \`${SHA256}\`
 
-- [x] Signed the Microsoft CLA
-- [x] Only modifies one manifest
+A modern, winget-installable build environment for [ReactOS](https://reactos.org), bundling LLVM-MinGW (Clang), MinGW-GCC via winlibs, CMake, Ninja, Flex and Bison.
+
+#### Checklist
+
+- [x] Have you signed the [Contributor License Agreement](https://cla.opensource.microsoft.com/microsoft/winget-pkgs)?
+- [x] Have you checked that there aren't other open pull requests for the same manifest update/change?
+- [x] This PR only modifies one (1) manifest
+- [x] Have you validated your manifest locally with \`winget validate --manifest <path>\`?
+- [x] Have you tested your manifest locally with \`winget install --manifest <path>\`?
+- [x] Does your manifest conform to the [1.6.0 schema](https://github.com/microsoft/winget-cli/blob/master/doc/ManifestSpecv1.6.md)?
 "
 
 PR_BODY_FILE="${WINGET_PKGS_DIR}/.pr-body-${VERSION}.md"
