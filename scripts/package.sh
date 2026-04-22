@@ -90,6 +90,18 @@ copy_common_files() {
     cp "${ROOT_DIR}/rosbe.cmd" "${staging}/" 2>/dev/null || true
     cp "${ROOT_DIR}/LICENSE" "${staging}/"
     cp "${ROOT_DIR}/README.md" "${staging}/"
+    # rosbe.exe wraps rosbe.cmd. Required because winget portable installers
+    # only accept .exe in NestedInstallerFiles. Compile via Ubuntu's
+    # gcc-mingw-w64-x86-64 if available, else fall back to a prebuilt copy.
+    if [[ -f "${ROOT_DIR}/rosbe.c" ]] && command -v x86_64-w64-mingw32-gcc &>/dev/null; then
+        info "Compiling rosbe.exe (Linux-hosted mingw cross-compiler)..."
+        x86_64-w64-mingw32-gcc -O2 -s -o "${staging}/rosbe.exe" "${ROOT_DIR}/rosbe.c"
+    elif [[ -f "${ROOT_DIR}/rosbe.exe" ]]; then
+        info "Using committed pre-built rosbe.exe..."
+        cp "${ROOT_DIR}/rosbe.exe" "${staging}/"
+    else
+        error "rosbe.exe not found, and x86_64-w64-mingw32-gcc not in PATH (apt install gcc-mingw-w64-x86-64)"
+    fi
 }
 
 # ── Linux package ─────────────────────────────────────────────────────────────
