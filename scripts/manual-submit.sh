@@ -86,19 +86,25 @@ PR_BODY="### Update from [RosBE Modern](https://github.com/ahmedarif193/winget-r
 - [x] Only modifies one manifest
 "
 
-url_encode() {
-    python3 -c 'import sys, urllib.parse; print(urllib.parse.quote(sys.stdin.read()))'
-}
-ENC_TITLE="$(printf '%s' "$PR_TITLE" | url_encode)"
-ENC_BODY="$(printf '%s'  "$PR_BODY"  | url_encode)"
+PR_BODY_FILE="${WINGET_PKGS_DIR}/.pr-body-${VERSION}.md"
+{
+    echo "# ${PR_TITLE}"
+    echo
+    echo "$PR_BODY"
+} > "$PR_BODY_FILE"
 
-PR_URL="https://github.com/${UPSTREAM}/compare/master...${FORK_USER}:winget-pkgs:${BRANCH}?expand=1&title=${ENC_TITLE}&body=${ENC_BODY}"
+# Compare URL only (no prefill in URL — keeps it short, body is in the file).
+PR_URL="https://github.com/${UPSTREAM}/compare/master...${FORK_USER}:winget-pkgs:${BRANCH}?expand=1"
 
 echo
 echo "============================================================"
-echo "Branch pushed. Open this URL to file the PR (web UI prefilled):"
+echo "Branch pushed."
 echo
-echo "  $PR_URL"
+echo "1. Open the compare page:"
+echo "     $PR_URL"
+echo
+echo "2. Paste the title and body from:"
+echo "     $PR_BODY_FILE"
 echo
 echo "Local fork checkout kept at: ${WINGET_PKGS_DIR}"
 echo "============================================================"
