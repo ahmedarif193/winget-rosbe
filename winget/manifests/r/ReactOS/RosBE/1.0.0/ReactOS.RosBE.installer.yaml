@@ -1,0 +1,17 @@
+# yaml-language-server: $schema=https://aka.ms/winget-manifest.installer.1.6.0.schema.json
+
+PackageIdentifier: ReactOS.RosBE
+PackageVersion: 1.0.0
+Commands:
+  - rosbe
+Installers:
+  - Architecture: x64
+    InstallerType: zip
+    NestedInstallerType: portable
+    NestedInstallerFiles:
+      - RelativeFilePath: rosbe-modern-1.0.0-win-x64\rosbe.cmd
+        PortableCommandAlias: rosbe
+    InstallerUrl: https://github.com/ahmedarif193/winget-rosbe/releases/download/v1.0.0/rosbe-modern-1.0.0-win-x64.zip
+    InstallerSha256: "0000000000000000000000000000000000000000000000000000000000000000"
+ManifestType: installer
+ManifestVersion: 1.6.0

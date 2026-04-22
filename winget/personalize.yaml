@@ -1,0 +1,87 @@
+# RosBE Modern - Windows Dev Environment via winget configure
+# Usage (PowerShell as Admin):
+#   winget configure --file personalize.yaml
+#   winget configure --file personalize.yaml --validate-only
+#
+# This installs all the dependencies needed to build ReactOS on Windows.
+
+"$schema": "https://aka.ms/winget-configuration.schema.json"
+
+properties:
+  configurationVersion: 0.2.0
+  resources:
+    # ── Build Tools ───────────────────────────────────────────────────────────
+    - resource: Microsoft.WinGet.DSC/WinGetPackage
+      directives:
+        description: CMake build system
+      settings:
+        id: Kitware.CMake
+        source: winget
+
+    - resource: Microsoft.WinGet.DSC/WinGetPackage
+      directives:
+        description: Ninja build tool
+      settings:
+        id: Ninja-build.Ninja
+        source: winget
+
+    - resource: Microsoft.WinGet.DSC/WinGetPackage
+      directives:
+        description: Git version control
+      settings:
+        id: Git.Git
+        source: winget
+
+    - resource: Microsoft.WinGet.DSC/WinGetPackage
+      directives:
+        description: Python 3.12
+      settings:
+        id: Python.Python.3.12
+        source: winget
+
+    # ── Editor / IDE ──────────────────────────────────────────────────────────
+    - resource: Microsoft.WinGet.DSC/WinGetPackage
+      directives:
+        description: Visual Studio Code
+      settings:
+        id: Microsoft.VisualStudioCode
+        source: winget
+
+    # ── Terminal / Shell ──────────────────────────────────────────────────────
+    - resource: Microsoft.WinGet.DSC/WinGetPackage
+      directives:
+        description: Windows Terminal
+      settings:
+        id: Microsoft.WindowsTerminal
+        source: winget
+
+    - resource: Microsoft.WinGet.DSC/WinGetPackage
+      directives:
+        description: Oh My Posh prompt
+      settings:
+        id: JanDeDobbeleer.OhMyPosh
+        source: winget
+
+    # ── Virtualization / Testing ──────────────────────────────────────────────
+    - resource: Microsoft.WinGet.DSC/WinGetPackage
+      directives:
+        description: QEMU emulator
+      settings:
+        id: SoftwareFreedomConservancy.QEMU
+        source: winget
+
+    # ── Debugging ─────────────────────────────────────────────────────────────
+    - resource: Microsoft.WinGet.DSC/WinGetPackage
+      directives:
+        description: WinDbg debugger
+      settings:
+        id: Microsoft.WinDbg
+        source: winget
+
+    # ── Rust (for modern ReactOS components) ──────────────────────────────────
+    - resource: Microsoft.WinGet.DSC/WinGetPackage
+      directives:
+        description: Rust via rustup
+      settings:
+        id: Rustlang.Rustup
+        source: winget

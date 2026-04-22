@@ -1,0 +1,18 @@
+# Extracted toolchains & tools (downloaded by setup.ps1 / setup.sh)
+toolchains/
+tools/
+.cache/
+
+# Packaging artifacts
+dist/
+
+# Editor
+*.swp
+*.swo
+*~
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
