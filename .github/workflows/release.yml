@@ -48,7 +48,7 @@ jobs:
       - name: Build archives
         run: |
           chmod +x scripts/package.sh
-          ./scripts/package.sh "$VERSION"
+          ./scripts/package.sh --windows-only "$VERSION"
 
       - name: Materialize winget manifest for this version
         run: |

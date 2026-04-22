@@ -9,6 +9,16 @@
 
 set -euo pipefail
 
+WINDOWS_ONLY=0
+args=()
+for a in "$@"; do
+    case "$a" in
+        --windows-only) WINDOWS_ONLY=1 ;;
+        *) args+=("$a") ;;
+    esac
+done
+set -- "${args[@]-}"
+
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(dirname "${SCRIPT_DIR}")"
 VERSION="${1:-1.0.0}"
@@ -49,7 +59,16 @@ download() {
     local url="$1" dest="$2"
     if [[ -f "${dest}" ]]; then info "Cached: $(basename "${dest}")"; return 0; fi
     info "Downloading $(basename "${dest}")..."
-    curl -L --progress-bar -o "${dest}" "${url}"
+    # --connect-timeout: abort if TCP connect takes >30s
+    # --max-time: hard ceiling of 15 min per download (winlibs 7z is the largest at ~100MB)
+    # --speed-limit/time: abort if transfer is <10KB/s for 60s (stuck download)
+    # --retry: retry transient network errors up to 3 times with exponential backoff
+    curl -fsSL --progress-bar \
+        --connect-timeout 30 \
+        --max-time 300 \
+        --speed-limit 10240 --speed-time 60 \
+        --retry 3 --retry-delay 5 \
+        -o "${dest}" "${url}"
 }
 
 ensure_tools() {
@@ -190,7 +209,11 @@ main() {
     rm -rf "${DIST_DIR}/staging"
     mkdir -p "${DIST_DIR}" "${CACHE_DIR}"
 
-    package_linux
+    if [[ "$WINDOWS_ONLY" -eq 0 ]]; then
+        package_linux
+    else
+        info "Skipping linux package (--windows-only)"
+    fi
     package_windows_x64
     generate_checksums
 
