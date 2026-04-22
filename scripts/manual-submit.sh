@@ -68,7 +68,7 @@ git add "$DEST"
 git commit -q -m "New version: ${PKG_ID} version ${VERSION}"
 
 echo "Pushing ${BRANCH} to ${FORK_USER}/winget-pkgs (SSH)..."
-git push --quiet --force-with-lease -u origin "$BRANCH"
+git push --quiet --force -u origin "$BRANCH"
 
 # Pre-fill PR title + body so the user just clicks Create on GitHub.
 INSTALLER_YAML="$SRC_DIR/${PKG_ID}.installer.yaml"
