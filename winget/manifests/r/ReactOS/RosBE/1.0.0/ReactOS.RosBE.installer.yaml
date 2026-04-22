@@ -2,15 +2,12 @@
 
 PackageIdentifier: ReactOS.RosBE
 PackageVersion: 1.0.0
-Commands:
-  - rosbe
 Installers:
   - Architecture: x64
     InstallerType: zip
     NestedInstallerType: portable
     NestedInstallerFiles:
       - RelativeFilePath: rosbe.exe
-        PortableCommandAlias: rosbe
     InstallerUrl: https://github.com/ahmedarif193/winget-rosbe/releases/download/v1.0.0/rosbe-1.0.0-win-x64.zip
     InstallerSha256: 5F07C724D5026B46F021CB3BA7E80B0C42E6C2658AAD258ECAA68D0E9F38C6E3
 ManifestType: installer
