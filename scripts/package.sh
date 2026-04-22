@@ -58,17 +58,21 @@ WINFLEXBISON_URL="https://github.com/lexxmark/winflexbison/releases/download/v${
 download() {
     local url="$1" dest="$2"
     if [[ -f "${dest}" ]]; then info "Cached: $(basename "${dest}")"; return 0; fi
-    info "Downloading $(basename "${dest}")..."
+    local name; name="$(basename "${dest}")"
+    info "Downloading ${name}..."
+    # -fSL (no -s): show errors and HTTP failures, follow redirects, fail on 4xx/5xx
     # --connect-timeout: abort if TCP connect takes >30s
-    # --max-time: hard ceiling of 15 min per download (winlibs 7z is the largest at ~100MB)
+    # --max-time: hard 5-min ceiling per download
     # --speed-limit/time: abort if transfer is <10KB/s for 60s (stuck download)
     # --retry: retry transient network errors up to 3 times with exponential backoff
-    curl -fsSL --progress-bar \
+    curl -fSL \
         --connect-timeout 30 \
         --max-time 300 \
         --speed-limit 10240 --speed-time 60 \
         --retry 3 --retry-delay 5 \
         -o "${dest}" "${url}"
+    local size; size=$(du -h "${dest}" 2>/dev/null | cut -f1)
+    ok "Downloaded ${name} (${size})"
 }
 
 ensure_tools() {
@@ -142,45 +146,53 @@ package_windows_x64() {
 
     # CMake (Windows)
     download "${CMAKE_WIN_URL}" "${CACHE_DIR}/cmake-win.zip"
+    info "Extracting cmake-win.zip..."
     unzip -qo "${CACHE_DIR}/cmake-win.zip" -d "${CACHE_DIR}/cmake-tmp"
     mv "${CACHE_DIR}/cmake-tmp"/cmake-* "${staging}/tools/cmake"
     rm -rf "${CACHE_DIR}/cmake-tmp"
 
     # Ninja (Windows)
     download "${NINJA_WIN_URL}" "${CACHE_DIR}/ninja-win.zip"
+    info "Extracting ninja-win.zip..."
     unzip -qo "${CACHE_DIR}/ninja-win.zip" -d "${staging}/tools/bin"
 
     # win_flex_bison
     download "${WINFLEXBISON_URL}" "${CACHE_DIR}/winflexbison.zip"
+    info "Extracting winflexbison.zip..."
     unzip -qo "${CACHE_DIR}/winflexbison.zip" -d "${staging}/tools/bin"
     cp "${staging}/tools/bin/win_flex.exe" "${staging}/tools/bin/flex.exe"
     cp "${staging}/tools/bin/win_bison.exe" "${staging}/tools/bin/bison.exe"
 
     # LLVM-MinGW (Windows)
     download "${LLVM_WIN_X64_URL}" "${CACHE_DIR}/llvm-win-x64.zip"
+    info "Extracting llvm-win-x64.zip (~500MB extracted)..."
     unzip -qo "${CACHE_DIR}/llvm-win-x64.zip" -d "${CACHE_DIR}/llvm-tmp"
     mv "${CACHE_DIR}/llvm-tmp"/llvm-mingw-* "${staging}/toolchains/llvm-mingw"
     rm -rf "${CACHE_DIR}/llvm-tmp"
 
     # winlibs GCC (Windows)
     download "${WINLIBS_X64_URL}" "${CACHE_DIR}/winlibs-x64.7z"
+    info "Extracting winlibs-x64.7z (~250MB extracted)..."
     mkdir -p "${CACHE_DIR}/winlibs-x64-tmp"
     7z x -o"${CACHE_DIR}/winlibs-x64-tmp" "${CACHE_DIR}/winlibs-x64.7z" >/dev/null
     mv "${CACHE_DIR}/winlibs-x64-tmp/mingw64" "${staging}/toolchains/mingw-gcc/x86_64-w64-mingw32"
     rm -rf "${CACHE_DIR}/winlibs-x64-tmp"
 
     download "${WINLIBS_I686_URL}" "${CACHE_DIR}/winlibs-i686.7z"
+    info "Extracting winlibs-i686.7z (~250MB extracted)..."
     mkdir -p "${CACHE_DIR}/winlibs-i686-tmp"
     7z x -o"${CACHE_DIR}/winlibs-i686-tmp" "${CACHE_DIR}/winlibs-i686.7z" >/dev/null
     mv "${CACHE_DIR}/winlibs-i686-tmp/mingw32" "${staging}/toolchains/mingw-gcc/i686-w64-mingw32"
     rm -rf "${CACHE_DIR}/winlibs-i686-tmp"
 
-    # Add prefix copies for binutils (toolchain-gcc.cmake expects x86_64-w64-mingw32-<tool>)
+    info "Adding prefix-copies for binutils..."
     add_prefix_copies "${staging}/toolchains/mingw-gcc/x86_64-w64-mingw32/bin" "x86_64-w64-mingw32"
     add_prefix_copies "${staging}/toolchains/mingw-gcc/i686-w64-mingw32/bin"   "i686-w64-mingw32"
 
+    info "Zipping ${pkg} (~700MB → ~300MB compressed)..."
     (cd "${DIST_DIR}/staging" && zip -qr "${DIST_DIR}/${pkg}.zip" "${pkg}")
-    ok "Created ${pkg}.zip"
+    local zsize; zsize=$(du -h "${DIST_DIR}/${pkg}.zip" | cut -f1)
+    ok "Created ${pkg}.zip (${zsize})"
 }
 
 add_prefix_copies() {
@@ -194,7 +206,9 @@ add_prefix_copies() {
 # ── Checksums ─────────────────────────────────────────────────────────────────
 generate_checksums() {
     info "Generating SHA256 checksums..."
-    (cd "${DIST_DIR}" && sha256sum *.tar.xz *.zip 2>/dev/null > SHA256SUMS.txt)
+    ( cd "${DIST_DIR}" && shopt -s nullglob && \
+      files=( *.tar.xz *.zip ) && \
+      [[ ${#files[@]} -gt 0 ]] && sha256sum "${files[@]}" > SHA256SUMS.txt )
     echo ""
     cat "${DIST_DIR}/SHA256SUMS.txt"
 }
