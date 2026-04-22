@@ -189,8 +189,11 @@ package_windows_x64() {
     add_prefix_copies "${staging}/toolchains/mingw-gcc/x86_64-w64-mingw32/bin" "x86_64-w64-mingw32"
     add_prefix_copies "${staging}/toolchains/mingw-gcc/i686-w64-mingw32/bin"   "i686-w64-mingw32"
 
-    info "Zipping ${pkg} (~700MB → ~300MB compressed)..."
-    (cd "${DIST_DIR}/staging" && zip -qr "${DIST_DIR}/${pkg}.zip" "${pkg}")
+    info "Zipping ${pkg} (flat, ~700MB to ~300MB compressed)..."
+    # Zip from INSIDE the staging dir so files are at the zip root, not under
+    # a ${pkg}/ subdir. Winget extracts this directly under the package's
+    # sandboxed dir, so tools end up at a stable versionless path.
+    (cd "${DIST_DIR}/staging/${pkg}" && zip -qr "${DIST_DIR}/${pkg}.zip" .)
     local zsize; zsize=$(du -h "${DIST_DIR}/${pkg}.zip" | cut -f1)
     ok "Created ${pkg}.zip (${zsize})"
 }

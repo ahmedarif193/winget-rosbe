@@ -9,7 +9,7 @@ Installers:
     InstallerType: zip
     NestedInstallerType: portable
     NestedInstallerFiles:
-      - RelativeFilePath: rosbe-modern-1.0.0-win-x64\rosbe.cmd
+      - RelativeFilePath: rosbe.cmd
         PortableCommandAlias: rosbe
     InstallerUrl: https://github.com/ahmedarif193/winget-rosbe/releases/download/v1.0.0/rosbe-modern-1.0.0-win-x64.zip
     InstallerSha256: "0000000000000000000000000000000000000000000000000000000000000000"
