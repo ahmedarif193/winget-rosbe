@@ -64,30 +64,26 @@ if ! gh api "repos/${FORK}" --silent 2>/dev/null; then
     exit 1
 fi
 
-echo "Syncing $FORK master with $UPSTREAM master..."
-if ! gh api -X POST "repos/${FORK}/merge-upstream" -f branch=master --silent; then
-    echo "merge-upstream failed; attempting force-reset to upstream master..."
-    UPSTREAM_SHA="$(gh api "repos/${UPSTREAM}/git/refs/heads/master" -q .object.sha 2>&1 || echo ERROR)"
-    if [[ "$UPSTREAM_SHA" == ERROR* ]]; then
-        echo ""
-        echo "ERROR: token cannot read ${UPSTREAM} (HTTP 404)."
-        echo "Fine-grained PATs can only read repos they are explicitly granted."
-        echo "Either use a classic PAT with 'public_repo' scope, or grant the"
-        echo "fine-grained PAT 'Public Repositories (read-only)' access."
-        exit 1
-    fi
-    gh api -X PATCH "repos/${FORK}/git/refs/heads/master" \
-        -f sha="$UPSTREAM_SHA" -F force=true --silent
-fi
-
 TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
+
 echo "Cloning $FORK..."
 git clone --quiet --depth=1 --filter=blob:none --sparse \
     "https://x-access-token:${GH_TOKEN}@github.com/${FORK}.git" "$TMP"
 git -C "$TMP" sparse-checkout set "manifests/${LETTER}/ReactOS/RosBE"
 git -C "$TMP" config user.email "$COMMIT_EMAIL"
 git -C "$TMP" config user.name  "$COMMIT_NAME"
+
+# Sync fork master from upstream via git (public read, no auth needed).
+# Avoids the merge-upstream API which many fine-grained PATs can't call (403).
+echo "Fetching upstream master from $UPSTREAM..."
+git -C "$TMP" remote add upstream "https://github.com/${UPSTREAM}.git"
+git -C "$TMP" fetch --quiet --depth=1 upstream master
+
+echo "Resetting fork master to upstream master and pushing..."
+git -C "$TMP" checkout master
+git -C "$TMP" reset --hard upstream/master
+git -C "$TMP" push --quiet --force-with-lease origin master
 
 git -C "$TMP" checkout -B "$BRANCH" master
 mkdir -p "$TMP/$MANIFEST_PATH"

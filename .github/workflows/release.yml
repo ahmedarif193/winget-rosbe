@@ -19,17 +19,30 @@ jobs:
           fetch-depth: 0   # need all tags to compute next version
 
       - id: v
+        env:
+          MSG: ${{ github.event.head_commit.message }}
         run: |
-          LAST_TAG=$(git tag -l 'v[0-9]*' --sort=-v:refname | head -1)
-          if [ -z "$LAST_TAG" ]; then
-            VERSION="1.0"
+          # Strip "publish:" prefix, take first line, trim, take first word.
+          TAIL="${MSG#publish:}"
+          TAIL="${TAIL%%$'\n'*}"
+          TAIL="$(echo "$TAIL" | xargs)"
+          FIRST="${TAIL%% *}"
+
+          if [[ "$FIRST" =~ ^[0-9]+\.[0-9]+(\.[0-9]+)?$ ]]; then
+            VERSION="$FIRST"
+            echo "Explicit version requested: $VERSION"
           else
-            LAST_VER=${LAST_TAG#v}
-            MAJOR=${LAST_VER%.*}
-            MINOR=${LAST_VER##*.}
-            VERSION="$MAJOR.$((MINOR + 1))"
+            LAST_TAG=$(git tag -l 'v[0-9]*' --sort=-v:refname | head -1)
+            if [ -z "$LAST_TAG" ]; then
+              VERSION="1.0"
+            else
+              LAST_VER=${LAST_TAG#v}
+              MAJOR=${LAST_VER%.*}
+              MINOR=${LAST_VER##*.}
+              VERSION="$MAJOR.$((MINOR + 1))"
+            fi
+            echo "Auto-incremented version: $VERSION (last tag: ${LAST_TAG:-none})"
           fi
-          echo "Resolved next version: $VERSION (last tag: ${LAST_TAG:-none})"
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
   package:
@@ -44,6 +57,17 @@ jobs:
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y -qq zip unzip xz-utils p7zip-full curl jq uuid-runtime
+
+      - name: Delete existing release+tag (re-publish support)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if gh release view "v$VERSION" --repo "${{ github.repository }}" >/dev/null 2>&1; then
+            echo "Deleting existing release v$VERSION (re-publish)..."
+            gh release delete "v$VERSION" --repo "${{ github.repository }}" --yes --cleanup-tag
+          else
+            echo "No existing release v$VERSION, proceeding."
+          fi
 
       - name: Build archives
         run: |
