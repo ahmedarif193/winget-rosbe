@@ -77,7 +77,7 @@ git -C "$TMP" sparse-checkout init --cone
 git -C "$TMP" sparse-checkout set "manifests/${LETTER}/ReactOS/RosBE"
 git -C "$TMP" config user.email "$COMMIT_EMAIL"
 git -C "$TMP" config user.name  "$COMMIT_NAME"
-git -C "$TMP" remote add origin   "https://x-access-token:${GH_TOKEN}@github.com/${FORK}.git"
+git -C "$TMP" remote add origin   "https://${FORK_USER}:${GH_TOKEN}@github.com/${FORK}.git"
 git -C "$TMP" remote add upstream "https://github.com/${UPSTREAM}.git"
 git -C "$TMP" fetch --quiet --depth=1 --filter=blob:none upstream master
 
