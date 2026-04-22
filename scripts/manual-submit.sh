@@ -1,13 +1,16 @@
 #!/usr/bin/env bash
 # Prepare a winget-pkgs PR for ReactOS.RosBE <version> WITHOUT actually
-# creating the PR. Clones the fork, syncs with upstream, drops the manifests
-# in, commits, pushes the branch, and prints the GitHub URL where you can
-# click "Compare & pull request" to open the PR yourself in the browser.
-#
-# Uses your SSH key for the fork push (no PAT involved).
+# creating the PR. Maintains a persistent local checkout of the fork at
+# $WINGET_PKGS_DIR (default $HOME/winget-pkgs) - first run clones it, every
+# subsequent run reuses it. Drops the manifests on a fresh branch, commits,
+# pushes via SSH (no PAT involved), and prints the GitHub URL where you can
+# click "Compare & pull request" to file the PR yourself in the browser.
 #
 # Usage: ./scripts/manual-submit.sh [version]
 #   defaults to 1.0.0 if no version given.
+#
+# Override checkout location:
+#   WINGET_PKGS_DIR=/some/other/path ./scripts/manual-submit.sh 1.2.0
 
 set -euo pipefail
 
@@ -20,6 +23,7 @@ UPSTREAM="microsoft/winget-pkgs"
 FORK_SSH="git@github.com:${FORK_USER}/winget-pkgs.git"
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 SRC_DIR="${ROOT_DIR}/winget/manifests/${LETTER}/ReactOS/RosBE/${VERSION}"
+WINGET_PKGS_DIR="${WINGET_PKGS_DIR:-$HOME/winget-pkgs}"
 BRANCH="${PKG_ID}-${VERSION}"
 
 # Sanity
@@ -28,20 +32,27 @@ for f in "${PKG_ID}.yaml" "${PKG_ID}.installer.yaml" "${PKG_ID}.locale.en-US.yam
     [[ -f "$SRC_DIR/$f" ]] || { echo "ERROR: missing $f in $SRC_DIR"; exit 1; }
 done
 
-TMP="$(mktemp -d)"
-cleanup() { echo; echo "(temp checkout left at: $TMP)"; }
-trap cleanup EXIT
+# First run: clone the fork. Subsequent runs: reuse the existing checkout.
+if [[ ! -d "$WINGET_PKGS_DIR/.git" ]]; then
+    echo "First run: cloning ${FORK_USER}/winget-pkgs to ${WINGET_PKGS_DIR}..."
+    git clone --quiet --depth=50 "$FORK_SSH" "$WINGET_PKGS_DIR"
+fi
 
-echo "Cloning ${FORK_USER}/winget-pkgs (shallow)..."
-git clone --quiet --depth=50 "$FORK_SSH" "$TMP/winget-pkgs"
-cd "$TMP/winget-pkgs"
+cd "$WINGET_PKGS_DIR"
+
+# Make sure remotes are correct (idempotent).
+git remote get-url origin   >/dev/null 2>&1 || git remote add origin   "$FORK_SSH"
+git remote get-url upstream >/dev/null 2>&1 || git remote add upstream "https://github.com/${UPSTREAM}.git"
+
+# Discard any local edits left from a previous failed run.
+git reset --hard HEAD --quiet 2>/dev/null || true
+git clean -fd --quiet 2>/dev/null || true
 
 echo "Fetching upstream master from ${UPSTREAM}..."
-git remote add upstream "https://github.com/${UPSTREAM}.git"
 git fetch --quiet --depth=1 upstream master
 
 echo "Creating branch ${BRANCH} from upstream/master..."
-git checkout -B "$BRANCH" upstream/master
+git checkout -B "$BRANCH" upstream/master --quiet
 
 DEST="manifests/${LETTER}/ReactOS/RosBE/${VERSION}"
 echo "Copying manifests into ${DEST}/..."
@@ -56,10 +67,10 @@ echo
 git add "$DEST"
 git commit -q -m "New version: ${PKG_ID} version ${VERSION}"
 
-echo "Pushing ${BRANCH} to ${FORK_USER}/winget-pkgs (uses your SSH key)..."
-git push --quiet -u origin "$BRANCH"
+echo "Pushing ${BRANCH} to ${FORK_USER}/winget-pkgs (SSH)..."
+git push --quiet --force-with-lease -u origin "$BRANCH"
 
-# Pre-fill the PR title and body so the user just clicks Submit on GitHub.
+# Pre-fill PR title + body so the user just clicks Create on GitHub.
 INSTALLER_YAML="$SRC_DIR/${PKG_ID}.installer.yaml"
 SHA256="$(awk '/InstallerSha256:/ {print $2}' "$INSTALLER_YAML")"
 
@@ -75,7 +86,6 @@ PR_BODY="### Update from [RosBE Modern](https://github.com/ahmedarif193/winget-r
 - [x] Only modifies one manifest
 "
 
-# URL-encode title and body for the prefill query string.
 url_encode() {
     python3 -c 'import sys, urllib.parse; print(urllib.parse.quote(sys.stdin.read()))'
 }
@@ -90,4 +100,5 @@ echo "Branch pushed. Open this URL to file the PR (web UI prefilled):"
 echo
 echo "  $PR_URL"
 echo
+echo "Local fork checkout kept at: ${WINGET_PKGS_DIR}"
 echo "============================================================"
