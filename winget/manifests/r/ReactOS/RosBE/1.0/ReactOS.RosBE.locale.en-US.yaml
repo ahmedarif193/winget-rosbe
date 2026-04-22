@@ -1,26 +1,25 @@
 # yaml-language-server: $schema=https://aka.ms/winget-manifest.defaultLocale.1.6.0.schema.json
 
 PackageIdentifier: ReactOS.RosBE
-PackageVersion: 1.0.0
+PackageVersion: 1.0
 PackageLocale: en-US
-Publisher: ReactOS Project
-PublisherUrl: https://reactos.org
+Publisher: Ahmed Arif
+PublisherUrl: https://github.com/ahmedarif193
 PublisherSupportUrl: https://github.com/ahmedarif193/winget-rosbe/issues
-Author: ReactOS Project
+Author: Ahmed Arif
 PackageName: RosBE Modern
 PackageUrl: https://github.com/ahmedarif193/winget-rosbe
 License: MIT
 LicenseUrl: https://github.com/ahmedarif193/winget-rosbe/blob/main/LICENSE
-ShortDescription: Modern ReactOS Build Environment with LLVM/Clang 21 and GCC 15.2
+ShortDescription: Modernized ReactOS Build Environment (unofficial, preview)
 Description: |-
-  RosBE Modern is a drop-in replacement for the legacy ReactOS Build Environment (RosBE).
-  It ships a self-contained, portable toolchain bundle for building ReactOS from source:
-    - LLVM-MinGW (Clang 21.1.7) cross-compiler
-    - MinGW-GCC 15.2 cross-compiler
-    - CMake 3.31.6
-    - Ninja 1.12.1
-    - Flex 2.6.4 & Bison 3.8.2
-  Target architectures: i686, x86_64, aarch64.
+  A modern, winget-installable build environment for ReactOS, bundling
+  the latest upstream toolchains: LLVM-MinGW (Clang), MinGW-GCC via
+  winlibs, CMake, Ninja, Flex, and Bison.
+
+  Not an official ReactOS release. Intended for preview / early adoption;
+  the goal is for this to become the default RosBE for upstream ReactOS
+  sources once validated.
 Moniker: rosbe
 Tags:
   - reactos
