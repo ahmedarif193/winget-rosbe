@@ -67,25 +67,22 @@ fi
 TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
 
-echo "Cloning $FORK..."
-git clone --quiet --depth=1 --filter=blob:none --sparse \
-    "https://x-access-token:${GH_TOKEN}@github.com/${FORK}.git" "$TMP"
+# Init, fetch upstream master's tip only, branch from it (never touch fork's
+# own master -- only push the new feature branch, which is all fine-grained
+# PATs reliably allow).
+echo "Preparing workspace (fetching upstream master HEAD)..."
+git -C "$TMP" init --quiet
+git -C "$TMP" config core.sparseCheckout true
+git -C "$TMP" sparse-checkout init --cone
 git -C "$TMP" sparse-checkout set "manifests/${LETTER}/ReactOS/RosBE"
 git -C "$TMP" config user.email "$COMMIT_EMAIL"
 git -C "$TMP" config user.name  "$COMMIT_NAME"
-
-# Sync fork master from upstream via git (public read, no auth needed).
-# Avoids the merge-upstream API which many fine-grained PATs can't call (403).
-echo "Fetching upstream master from $UPSTREAM..."
+git -C "$TMP" remote add origin   "https://x-access-token:${GH_TOKEN}@github.com/${FORK}.git"
 git -C "$TMP" remote add upstream "https://github.com/${UPSTREAM}.git"
-git -C "$TMP" fetch --quiet --depth=1 upstream master
+git -C "$TMP" fetch --quiet --depth=1 --filter=blob:none upstream master
 
-echo "Resetting fork master to upstream master and pushing..."
-git -C "$TMP" checkout master
-git -C "$TMP" reset --hard upstream/master
-git -C "$TMP" push --quiet --force-with-lease origin master
-
-git -C "$TMP" checkout -B "$BRANCH" master
+echo "Creating branch ${BRANCH} from upstream master..."
+git -C "$TMP" checkout -B "$BRANCH" FETCH_HEAD
 mkdir -p "$TMP/$MANIFEST_PATH"
 cp "$SRC_DIR"/*.yaml "$TMP/$MANIFEST_PATH/"
 git -C "$TMP" add "$MANIFEST_PATH"
