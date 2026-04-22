@@ -85,7 +85,7 @@ jobs:
             for f in "$SRC"/*.yaml; do
               name=$(basename "$f")
               sed "s|PackageVersion: 1.0.0|PackageVersion: $VERSION|; \
-                   s|rosbe-modern-1.0.0-win-x64.zip|rosbe-modern-$VERSION-win-x64.zip|g; \
+                   s|rosbe-1.0.0-win-x64.zip|rosbe-$VERSION-win-x64.zip|g; \
                    s|releases/download/v1.0.0/|releases/download/v$VERSION/|g" \
                   "$f" > "$DST/$name"
             done

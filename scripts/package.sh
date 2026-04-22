@@ -3,8 +3,8 @@
 # self-contained prefix. Runs on Linux (CI or WSL).
 #
 # Outputs in dist/:
-#   rosbe-modern-<version>-linux-x64.tar.xz
-#   rosbe-modern-<version>-win-x64.zip
+#   rosbe-<version>-linux-x64.tar.xz
+#   rosbe-<version>-win-x64.zip
 #   SHA256SUMS.txt
 
 set -euo pipefail
@@ -94,7 +94,7 @@ copy_common_files() {
 
 # ── Linux package ─────────────────────────────────────────────────────────────
 package_linux() {
-    local pkg="rosbe-modern-${VERSION}-linux-x64"
+    local pkg="rosbe-${VERSION}-linux-x64"
     local staging="${DIST_DIR}/staging/${pkg}"
     info "Building ${pkg}..."
 
@@ -135,7 +135,7 @@ package_linux() {
 
 # ── Windows package ──────────────────────────────────────────────────────────
 package_windows_x64() {
-    local pkg="rosbe-modern-${VERSION}-win-x64"
+    local pkg="rosbe-${VERSION}-win-x64"
     local staging="${DIST_DIR}/staging/${pkg}"
     info "Building ${pkg}..."
 
