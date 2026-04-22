@@ -1,66 +1,105 @@
-name: Release
+name: Publish
 
 on:
   push:
-    tags:
-      - 'v*'
+    branches: [main]
 
 permissions:
   contents: write
 
 jobs:
-  package:
+  gate:
     runs-on: ubuntu-latest
+    if: startsWith(github.event.head_commit.message, 'publish:')
+    outputs:
+      version: ${{ steps.v.outputs.version }}
+    steps:
+      - id: v
+        env:
+          MSG: ${{ github.event.head_commit.message }}
+        run: |
+          V="${MSG#publish:}"
+          V="${V%%$'\n'*}"
+          V="$(echo "$V" | xargs)"
+          if [[ ! "$V" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "bad version: '$V' (expected publish: X.Y.Z)"
+            exit 1
+          fi
+          echo "version=$V" >> "$GITHUB_OUTPUT"
+
+  package:
+    needs: gate
+    runs-on: ubuntu-latest
+    env:
+      VERSION: ${{ needs.gate.outputs.version }}
     steps:
       - uses: actions/checkout@v4
 
-      - name: Extract version
-        id: version
-        run: echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
-
-      - name: Install packaging dependencies
+      - name: Install deps
         run: |
           sudo apt-get update -qq
-          sudo apt-get install -y -qq zip unzip xz-utils p7zip-full curl
+          sudo apt-get install -y -qq zip unzip xz-utils p7zip-full curl jq uuid-runtime
 
       - name: Build archives
         run: |
           chmod +x scripts/package.sh
-          ./scripts/package.sh "${{ steps.version.outputs.version }}"
+          ./scripts/package.sh "$VERSION"
 
-      - name: Show checksums
-        run: cat dist/SHA256SUMS.txt
+      - name: Materialize winget manifest for this version
+        run: |
+          set -e
+          SRC=winget/manifests/r/ReactOS/RosBE/1.0.0
+          DST=winget/manifests/r/ReactOS/RosBE/$VERSION
+          if [ ! -d "$DST" ]; then
+            mkdir -p "$DST"
+            for f in "$SRC"/*.yaml; do
+              name=$(basename "$f")
+              sed "s|PackageVersion: 1.0.0|PackageVersion: $VERSION|; \
+                   s|rosbe-modern-1.0.0-win-x64|rosbe-modern-$VERSION-win-x64|g; \
+                   s|releases/download/v1.0.0/|releases/download/v$VERSION/|g" \
+                  "$f" > "$DST/$name"
+            done
+          fi
+          HASH=$(awk '/win-x64.zip/ {print toupper($1)}' dist/SHA256SUMS.txt)
+          sed -i "s|InstallerSha256:.*|InstallerSha256: $HASH|" \
+              "$DST/ReactOS.RosBE.installer.yaml"
+
+      - name: Compose release body
+        id: body
+        run: |
+          # shellcheck source=scripts/versions.env
+          source scripts/versions.env
+          {
+            echo "body<<RELEASEBODYEOF"
+            echo "## RosBE Modern v$VERSION"
+            echo ""
+            echo "### Bundled versions"
+            echo "| Component | Version |"
+            echo "|-----------|---------|"
+            echo "| LLVM-MinGW | $LLVM_VERSION |"
+            echo "| winlibs GCC (Windows) | $WINLIBS_TAG (GCC $GCC_VERSION + mingw-w64 $MINGW_W64_VERSION) |"
+            echo "| CMake | $CMAKE_VERSION |"
+            echo "| Ninja | $NINJA_VERSION |"
+            echo "| WinFlexBison | $WINFLEXBISON_VERSION |"
+            echo ""
+            echo "### Install"
+            echo '```'
+            echo "winget install ReactOS.RosBE"
+            echo '```'
+            echo ""
+            echo "### Checksums"
+            echo '```'
+            cat dist/SHA256SUMS.txt
+            echo '```'
+            echo "RELEASEBODYEOF"
+          } >> "$GITHUB_OUTPUT"
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          name: "RosBE Modern v${{ steps.version.outputs.version }}"
-          body: |
-            ## RosBE Modern v${{ steps.version.outputs.version }}
-
-            Toolchain bundle for building ReactOS.
-
-            ### Bundled
-            | Component | Version |
-            |-----------|---------|
-            | LLVM-MinGW (Clang) | 21.1.7 (20251202) |
-            | MinGW-GCC (Windows via winlibs) | 15.2.0 |
-            | MinGW-GCC (Linux via crosstool-NG) | 15.2.0 |
-            | CMake | 3.31.6 |
-            | Ninja | 1.12.1 |
-            | Flex + Bison (Windows) | 2.6.4 / 3.8.2 |
-
-            ### Downloads
-            | File | Platform |
-            |------|----------|
-            | `rosbe-modern-${{ steps.version.outputs.version }}-linux-x64.tar.xz` | Linux / WSL2 |
-            | `rosbe-modern-${{ steps.version.outputs.version }}-win-x64.zip`     | Windows x64  |
-
-            ### Install
-            ```
-            winget install ReactOS.RosBE
-            rosbe --install
-            ```
+          tag_name: v${{ needs.gate.outputs.version }}
+          name: RosBE Modern v${{ needs.gate.outputs.version }}
+          body: ${{ steps.body.outputs.body }}
           files: |
             dist/*.tar.xz
             dist/*.zip
@@ -68,32 +107,29 @@ jobs:
           draft: false
           prerelease: false
 
-  update-winget:
-    needs: package
+      - uses: actions/upload-artifact@v4
+        with:
+          name: winget-manifests
+          path: winget/manifests/r/ReactOS/RosBE/${{ needs.gate.outputs.version }}/
+
+  publish-winget:
+    needs: [gate, package]
     runs-on: ubuntu-latest
+    env:
+      VERSION: ${{ needs.gate.outputs.version }}
+      GH_TOKEN: ${{ secrets.WINGET_PUBLISHER_RELEASER }}
     steps:
       - uses: actions/checkout@v4
 
-      - name: Extract version
-        id: version
-        run: echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+      - uses: actions/download-artifact@v4
+        with:
+          name: winget-manifests
+          path: winget/manifests/r/ReactOS/RosBE/${{ needs.gate.outputs.version }}/
 
-      - name: Download release checksums
-        run: gh release download "${GITHUB_REF_NAME}" --pattern "SHA256SUMS.txt" --dir /tmp
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Install deps
+        run: sudo apt-get install -y -qq uuid-runtime
 
-      - name: Update winget manifest hash
+      - name: Open PR on microsoft/winget-pkgs
         run: |
-          VERSION="${{ steps.version.outputs.version }}"
-          MANIFEST="winget/manifests/r/ReactOS/RosBE/${VERSION}/ReactOS.RosBE.installer.yaml"
-          HASH=$(grep "win-x64.zip" /tmp/SHA256SUMS.txt | awk '{print toupper($1)}')
-          echo "x64 hash: ${HASH}"
-          [[ -f "${MANIFEST}" ]] && \
-            sed -i "s|InstallerSha256:.*|InstallerSha256: ${HASH}|" "${MANIFEST}" && \
-            cat "${MANIFEST}"
-
-      - name: Instructions
-        run: |
-          echo "Submit manifest to microsoft/winget-pkgs:"
-          echo "  ./scripts/submit-winget.sh ${{ steps.version.outputs.version }}"
+          chmod +x scripts/publish-winget.sh
+          ./scripts/publish-winget.sh "$VERSION"

@@ -20,34 +20,29 @@ info() { echo -e "${CYAN}[INFO]${NC} $*"; }
 ok()   { echo -e "${GREEN}[  OK]${NC} $*"; }
 error(){ echo -e "${RED}[FAIL]${NC} $*"; exit 1; }
 
-# ── Upstream URLs ─────────────────────────────────────────────────────────────
-LLVM_VERSION="20251202"
-LLVM_BASE="https://github.com/mstorsjo/llvm-mingw/releases/download/${LLVM_VERSION}"
-LLVM_LINUX_URL="${LLVM_BASE}/llvm-mingw-${LLVM_VERSION}-ucrt-ubuntu-22.04-x86_64.tar.xz"
-LLVM_WIN_X64_URL="${LLVM_BASE}/llvm-mingw-${LLVM_VERSION}-ucrt-x86_64.zip"
+# shellcheck source=versions.env
+source "${SCRIPT_DIR}/versions.env"
 
-# Linux host cross-compilers (crosstool-NG)
-GCC_LINUX_BASE="https://github.com/ahmedarif193/mingw-gcc15.2/releases/download/v15.2"
+LLVM_BASE="https://github.com/mstorsjo/llvm-mingw/releases/download/${LLVM_VERSION}"
+LLVM_LINUX_URL="${LLVM_BASE}/llvm-mingw-${LLVM_VERSION}-${LLVM_TRIPLET}-ubuntu-22.04-x86_64.tar.xz"
+LLVM_WIN_X64_URL="${LLVM_BASE}/llvm-mingw-${LLVM_VERSION}-${LLVM_TRIPLET}-x86_64.zip"
+
+GCC_LINUX_BASE="https://github.com/ahmedarif193/mingw-gcc15.2/releases/download/${GCC_LINUX_TAG}"
 GCC_LINUX_I686_URL="${GCC_LINUX_BASE}/i686-w64-mingw32.tar.gz"
 GCC_LINUX_X64_URL="${GCC_LINUX_BASE}/x86_64-w64-mingw32.tar.gz"
 GCC_LINUX_AARCH64_URL="${GCC_LINUX_BASE}/aarch64-w64-mingw32.tar.xz"
 
-# Windows-native GCC (winlibs)
-WINLIBS_TAG="15.2.0posix-14.0.0-ucrt-r7"
 WINLIBS_BASE="https://github.com/brechtsanders/winlibs_mingw/releases/download/${WINLIBS_TAG}"
-WINLIBS_X64_URL="${WINLIBS_BASE}/winlibs-x86_64-posix-seh-gcc-15.2.0-mingw-w64ucrt-14.0.0-r7.7z"
-WINLIBS_I686_URL="${WINLIBS_BASE}/winlibs-i686-posix-dwarf-gcc-15.2.0-mingw-w64ucrt-14.0.0-r7.7z"
+WINLIBS_X64_URL="${WINLIBS_BASE}/winlibs-x86_64-posix-seh-gcc-${GCC_VERSION}-mingw-w64ucrt-${MINGW_W64_VERSION}-r7.7z"
+WINLIBS_I686_URL="${WINLIBS_BASE}/winlibs-i686-posix-dwarf-gcc-${GCC_VERSION}-mingw-w64ucrt-${MINGW_W64_VERSION}-r7.7z"
 
-# Cross-platform tools
-CMAKE_VERSION="3.31.6"
 CMAKE_LINUX_URL="https://github.com/Kitware/CMake/releases/download/v${CMAKE_VERSION}/cmake-${CMAKE_VERSION}-linux-x86_64.tar.gz"
 CMAKE_WIN_URL="https://github.com/Kitware/CMake/releases/download/v${CMAKE_VERSION}/cmake-${CMAKE_VERSION}-windows-x86_64.zip"
 
-NINJA_VERSION="1.12.1"
 NINJA_LINUX_URL="https://github.com/ninja-build/ninja/releases/download/v${NINJA_VERSION}/ninja-linux.zip"
 NINJA_WIN_URL="https://github.com/ninja-build/ninja/releases/download/v${NINJA_VERSION}/ninja-win.zip"
 
-WINFLEXBISON_URL="https://github.com/lexxmark/winflexbison/releases/download/v2.5.25/win_flex_bison-2.5.25.zip"
+WINFLEXBISON_URL="https://github.com/lexxmark/winflexbison/releases/download/v${WINFLEXBISON_VERSION}/win_flex_bison-${WINFLEXBISON_VERSION}.zip"
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 download() {

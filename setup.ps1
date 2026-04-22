@@ -29,23 +29,31 @@ $ToolsDir     = Join-Path $RosbeRoot "tools"
 $ToolchainDir = Join-Path $RosbeRoot "toolchains"
 $CacheDir     = Join-Path $RosbeRoot ".cache"
 
-$LlvmVersion  = "20251202"
-$LlvmBaseUrl  = "https://github.com/mstorsjo/llvm-mingw/releases/download/$LlvmVersion"
+# Load versions from scripts/versions.env (KEY=VALUE only, no quotes).
+$VersionsEnv = Join-Path $RosbeRoot "scripts/versions.env"
+$V = @{}
+foreach ($line in Get-Content $VersionsEnv) {
+    if ($line -match '^\s*([A-Z_][A-Z0-9_]*)\s*=\s*(.+?)\s*$') {
+        $V[$matches[1]] = $matches[2]
+    }
+}
 
-# GCC: winlibs (native Windows builds). crosstool-NG will replace this later.
-# Release tag: GCC 15.2.0 + MinGW-w64 14.0.0 UCRT (posix threads)
-$WinlibsReleaseTag = "15.2.0posix-14.0.0-ucrt-r7"
-$WinlibsBaseUrl    = "https://github.com/brechtsanders/winlibs_mingw/releases/download/$WinlibsReleaseTag"
-$WinlibsX64Asset   = "winlibs-x86_64-posix-seh-gcc-15.2.0-mingw-w64ucrt-14.0.0-r7.7z"
-$WinlibsX86Asset   = "winlibs-i686-posix-dwarf-gcc-15.2.0-mingw-w64ucrt-14.0.0-r7.7z"
+$LlvmVersion         = $V['LLVM_VERSION']
+$LlvmTriplet         = $V['LLVM_TRIPLET']
+$LlvmBaseUrl         = "https://github.com/mstorsjo/llvm-mingw/releases/download/$LlvmVersion"
 
-$CmakeVersion = "3.31.6"
-$CmakeUrl     = "https://github.com/Kitware/CMake/releases/download/v$CmakeVersion/cmake-$CmakeVersion-windows-x86_64.zip"
+$WinlibsReleaseTag   = $V['WINLIBS_TAG']
+$WinlibsBaseUrl      = "https://github.com/brechtsanders/winlibs_mingw/releases/download/$WinlibsReleaseTag"
+$WinlibsX64Asset     = "winlibs-x86_64-posix-seh-gcc-$($V['GCC_VERSION'])-mingw-w64ucrt-$($V['MINGW_W64_VERSION'])-r7.7z"
+$WinlibsX86Asset     = "winlibs-i686-posix-dwarf-gcc-$($V['GCC_VERSION'])-mingw-w64ucrt-$($V['MINGW_W64_VERSION'])-r7.7z"
 
-$NinjaVersion = "1.12.1"
-$NinjaUrl     = "https://github.com/ninja-build/ninja/releases/download/v$NinjaVersion/ninja-win.zip"
+$CmakeVersion        = $V['CMAKE_VERSION']
+$CmakeUrl            = "https://github.com/Kitware/CMake/releases/download/v$CmakeVersion/cmake-$CmakeVersion-windows-x86_64.zip"
 
-$WinFlexBisonVersion = "2.5.25"
+$NinjaVersion        = $V['NINJA_VERSION']
+$NinjaUrl            = "https://github.com/ninja-build/ninja/releases/download/v$NinjaVersion/ninja-win.zip"
+
+$WinFlexBisonVersion = $V['WINFLEXBISON_VERSION']
 $WinFlexBisonUrl     = "https://github.com/lexxmark/winflexbison/releases/download/v$WinFlexBisonVersion/win_flex_bison-$WinFlexBisonVersion.zip"
 
 # Detect host architecture
@@ -176,7 +184,7 @@ function Setup-LlvmMingw {
     }
 
     $llvmArch = $LlvmArchMap[$HostArch]
-    $filename = "llvm-mingw-$LlvmVersion-ucrt-$llvmArch.zip"
+    $filename = "llvm-mingw-$LlvmVersion-$LlvmTriplet-$llvmArch.zip"
     $archive = Join-Path $CacheDir $filename
     Download-File "$LlvmBaseUrl/$filename" $archive
 
