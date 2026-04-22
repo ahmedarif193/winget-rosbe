@@ -1,7 +1,7 @@
 # yaml-language-server: $schema=https://aka.ms/winget-manifest.defaultLocale.1.6.0.schema.json
 
 PackageIdentifier: ReactOS.RosBE
-PackageVersion: 1.0
+PackageVersion: 1.0.0
 PackageLocale: en-US
 Publisher: Ahmed Arif
 PublisherUrl: https://github.com/ahmedarif193

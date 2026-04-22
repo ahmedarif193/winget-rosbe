@@ -28,18 +28,19 @@ jobs:
           TAIL="$(echo "$TAIL" | xargs)"
           FIRST="${TAIL%% *}"
 
-          if [[ "$FIRST" =~ ^[0-9]+\.[0-9]+(\.[0-9]+)?$ ]]; then
+          if [[ "$FIRST" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
             VERSION="$FIRST"
             echo "Explicit version requested: $VERSION"
           else
             LAST_TAG=$(git tag -l 'v[0-9]*' --sort=-v:refname | head -1)
             if [ -z "$LAST_TAG" ]; then
-              VERSION="1.0"
+              VERSION="1.0.0"
             else
               LAST_VER=${LAST_TAG#v}
-              MAJOR=${LAST_VER%.*}
-              MINOR=${LAST_VER##*.}
-              VERSION="$MAJOR.$((MINOR + 1))"
+              IFS='.' read -r MAJOR MINOR PATCH <<< "$LAST_VER"
+              MINOR=${MINOR:-0}
+              PATCH=${PATCH:-0}
+              VERSION="$MAJOR.$((MINOR + 1)).0"
             fi
             echo "Auto-incremented version: $VERSION (last tag: ${LAST_TAG:-none})"
           fi
@@ -77,15 +78,15 @@ jobs:
       - name: Materialize winget manifest for this version
         run: |
           set -e
-          SRC=winget/manifests/r/ReactOS/RosBE/1.0
+          SRC=winget/manifests/r/ReactOS/RosBE/1.0.0
           DST=winget/manifests/r/ReactOS/RosBE/$VERSION
           if [ ! -d "$DST" ]; then
             mkdir -p "$DST"
             for f in "$SRC"/*.yaml; do
               name=$(basename "$f")
-              sed "s|PackageVersion: 1.0|PackageVersion: $VERSION|; \
-                   s|rosbe-modern-1.0-win-x64|rosbe-modern-$VERSION-win-x64|g; \
-                   s|releases/download/v1.0/|releases/download/v$VERSION/|g" \
+              sed "s|PackageVersion: 1.0.0|PackageVersion: $VERSION|; \
+                   s|rosbe-modern-1.0.0-win-x64|rosbe-modern-$VERSION-win-x64|g; \
+                   s|releases/download/v1.0.0/|releases/download/v$VERSION/|g" \
                   "$f" > "$DST/$name"
             done
           fi
