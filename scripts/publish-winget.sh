@@ -48,13 +48,34 @@ if [[ -n "$EXISTING_PR" ]]; then
     exit 0
 fi
 
-echo "Ensuring fork of $UPSTREAM exists under $FORK_USER..."
-gh repo fork "$UPSTREAM" --clone=false --default-branch-only >/dev/null 2>&1 || true
+echo "Checking fork $FORK exists..."
+if ! gh api "repos/${FORK}" --silent 2>/dev/null; then
+    echo ""
+    echo "ERROR: Fork $FORK does not exist."
+    echo ""
+    echo "The token cannot create it automatically (fine-grained PATs usually"
+    echo "lack read access to public repos outside the owner's account)."
+    echo ""
+    echo "Fix: fork manually once via the GitHub UI:"
+    echo "  https://github.com/${UPSTREAM}/fork"
+    echo ""
+    echo "Pick ${FORK_USER} as the destination, confirm. The script is"
+    echo "idempotent after that: every future publish reuses the fork."
+    exit 1
+fi
 
 echo "Syncing $FORK master with $UPSTREAM master..."
-if ! gh api -X POST "repos/${FORK}/merge-upstream" -f branch=master --silent 2>/dev/null; then
-    echo "merge-upstream failed; force-resetting fork master to upstream..."
-    UPSTREAM_SHA="$(gh api "repos/${UPSTREAM}/git/refs/heads/master" -q .object.sha)"
+if ! gh api -X POST "repos/${FORK}/merge-upstream" -f branch=master --silent; then
+    echo "merge-upstream failed; attempting force-reset to upstream master..."
+    UPSTREAM_SHA="$(gh api "repos/${UPSTREAM}/git/refs/heads/master" -q .object.sha 2>&1 || echo ERROR)"
+    if [[ "$UPSTREAM_SHA" == ERROR* ]]; then
+        echo ""
+        echo "ERROR: token cannot read ${UPSTREAM} (HTTP 404)."
+        echo "Fine-grained PATs can only read repos they are explicitly granted."
+        echo "Either use a classic PAT with 'public_repo' scope, or grant the"
+        echo "fine-grained PAT 'Public Repositories (read-only)' access."
+        exit 1
+    fi
     gh api -X PATCH "repos/${FORK}/git/refs/heads/master" \
         -f sha="$UPSTREAM_SHA" -F force=true --silent
 fi
