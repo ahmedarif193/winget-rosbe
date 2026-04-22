@@ -74,8 +74,16 @@ git push --quiet --force-with-lease -u origin "$BRANCH"
 INSTALLER_YAML="$SRC_DIR/${PKG_ID}.installer.yaml"
 SHA256="$(awk '/InstallerSha256:/ {print $2}' "$INSTALLER_YAML")"
 
-PR_TITLE="New version: ${PKG_ID} version ${VERSION}"
-PR_BODY="### Update from [RosBE Modern](https://github.com/ahmedarif193/winget-rosbe) :rocket:
+# If this version's manifest dir already exists in upstream master, it's an
+# update; otherwise it's the first-ever submission of this package.
+if git -C "$WINGET_PKGS_DIR" cat-file -e "upstream/master:manifests/${LETTER}/ReactOS/RosBE" 2>/dev/null; then
+    PR_KIND="New version"
+else
+    PR_KIND="New package"
+fi
+
+PR_TITLE="${PR_KIND}: ${PKG_ID} version ${VERSION}"
+PR_BODY="### ${PR_KIND} from [RosBE Modern](https://github.com/ahmedarif193/winget-rosbe) :rocket:
 
 - **Version**: \`${VERSION}\`
 - **Release**: https://github.com/ahmedarif193/winget-rosbe/releases/tag/v${VERSION}
