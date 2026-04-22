@@ -1,108 +1,104 @@
-# winget-rosbe
+# winget-rosbe (kitchen)
 
-Winget-installable toolchain bundle for building [ReactOS](https://reactos.org).
+Internal CI repo. Builds `ReactOS.RosBE` and publishes it to
+`microsoft/winget-pkgs`. End users never see this repo — they run
+`winget install ReactOS.RosBE` (or `winget install rosbe`).
 
-This repo is the **kitchen** — it downloads upstream toolchains and build
-tools, assembles them into a self-contained prefix, and publishes it as
-`ReactOS.RosBE` on the Windows Package Manager. End users never clone this
-repo; they run `winget install ReactOS.RosBE`.
+## Release a new version
 
-> **Status:** Windows (`winget install`) is the primary target and is
-> working. The Linux / WSL2 installer (`setup.sh` + `rosbe-modern-*-linux-x64.tar.xz`
-> artifact) is kept in the kitchen but not yet polished — expect rough edges
-> there until a dedicated Linux release.
-
-## For end users
-
-```powershell
-winget install ReactOS.RosBE
+```bash
+# Update scripts/versions.env if any upstream bumped, then:
+git commit --allow-empty -m "publish: 1.2.0"
+git push
 ```
 
-Winget installs the bundle to `%LOCALAPPDATA%\Microsoft\WinGet\Packages\ReactOS.RosBE_*\`.
-ReactOS's own `configure.cmd` / `configure.sh` / cmake toolchain files find
-the tools there — no PATH editing required on the RosBE side.
+That's it. CI does the rest. Any commit **not** starting with `publish:` runs nothing.
 
-Verify the install:
-```powershell
-rosbe
+Version in the commit message must match `^[0-9]+\.[0-9]+\.[0-9]+$`. Anything else fails the gate job.
+
+## What CI does on `publish: X.Y.Z`
+
+`.github/workflows/release.yml` runs three jobs in sequence:
+
+1. **gate** — extracts `X.Y.Z` from the commit subject, validates semver.
+2. **package** — runs `scripts/package.sh X.Y.Z`:
+   - Downloads all upstreams into `dist/cache/`
+   - Builds `rosbe-modern-X.Y.Z-linux-x64.tar.xz` and `rosbe-modern-X.Y.Z-win-x64.zip`
+   - Generates `dist/SHA256SUMS.txt`
+   - Materializes `winget/manifests/r/ReactOS/RosBE/X.Y.Z/` from the `1.0.0` template (bumps `PackageVersion`, `InstallerUrl`, `InstallerSha256`)
+   - Creates GitHub Release `vX.Y.Z` with all 3 artifacts + a body that lists every bundled upstream version.
+3. **publish-winget** — runs `scripts/publish-winget.sh X.Y.Z`:
+   - Forks `microsoft/winget-pkgs` (once), syncs master
+   - Creates `ReactOS.RosBE-X.Y.Z-<UUID>` branch
+   - Commits the new manifest, pushes, opens PR titled `New version: ReactOS.RosBE version X.Y.Z`
+   - PR body includes release URL, SHA256, bundled upstream versions.
+
+After Microsoft moderators merge the PR: `winget install rosbe` resolves to the new version.
+
+## Required repo secrets
+
+| Secret | Value |
+|--------|-------|
+| `WINGET_PUBLISHER_RELEASER` | Fine-grained PAT. Contents: R/W. Pull requests: R/W. Metadata: R. Repository access: All repositories. |
+
+Settings → Secrets and variables → Actions → New repository secret.
+
+## Upstream versions (single source of truth)
+
+All version constants live in `scripts/versions.env` — plain KEY=VALUE:
+
+```sh
+LLVM_VERSION=20251202
+LLVM_TRIPLET=ucrt
+CMAKE_VERSION=3.31.6
+NINJA_VERSION=1.12.1
+WINFLEXBISON_VERSION=2.5.25
+WINLIBS_TAG=15.2.0posix-14.0.0-ucrt-r7
+GCC_VERSION=15.2.0
+MINGW_W64_VERSION=14.0.0
+GCC_LINUX_TAG=v15.2
 ```
 
-## Layout of the installed bundle
+Sourced by `scripts/package.sh` (bash) and parsed by `setup.ps1` (PowerShell). The release body and winget PR body both interpolate from these — one file to bump when upstreams release a new version.
 
-```
-%LOCALAPPDATA%\Microsoft\WinGet\Packages\ReactOS.RosBE_*\rosbe-modern-<version>-win-x64\
-├── rosbe.cmd
-├── LICENSE  README.md
-├── tools/
-│   ├── cmake/bin/cmake.exe
-│   └── bin/{ninja,flex,bison,win_flex,win_bison}.exe
-└── toolchains/
-    ├── llvm-mingw/              # Clang 21 (LLVM-MinGW)
-    └── mingw-gcc/
-        ├── x86_64-w64-mingw32/  # GCC 15.2 + binutils (UCRT, SEH)
-        └── i686-w64-mingw32/    # GCC 15.2 + binutils (UCRT, DWARF)
-```
-
-## Ingredients (kitchen pulls these at CI time)
-
-| Component | Source | Notes |
-|-----------|--------|-------|
-| LLVM-MinGW (Clang 21, lld, libc++) | [mstorsjo/llvm-mingw](https://github.com/mstorsjo/llvm-mingw) | i686, x86_64, aarch64 |
-| MinGW-GCC 15.2.0 (Windows, UCRT) | [brechtsanders/winlibs_mingw](https://github.com/brechtsanders/winlibs_mingw) | ships windres + windmc |
-| MinGW-GCC 15.2.0 (Linux host, crosstool-NG) | [ahmedarif193/mingw-gcc15.2](https://github.com/ahmedarif193/mingw-gcc15.2) | for WSL/Linux bundle |
-| CMake | [Kitware/CMake](https://github.com/Kitware/CMake) | latest stable |
-| Ninja | [ninja-build/ninja](https://github.com/ninja-build/ninja) | |
-| Flex + Bison (Windows) | [lexxmark/winflexbison](https://github.com/lexxmark/winflexbison) | |
-
-> crosstool-NG-based Windows-hosted builds will replace winlibs in a future
-> release once they're published to `ahmedarif193/mingw-gcc15.2`.
-
-## Kitchen layout
+## Repo layout
 
 ```
 winget-rosbe/
-├── setup.ps1                                  # Windows kitchen (local dev)
-├── setup.sh                                   # Linux kitchen (local dev)
-├── rosbe.cmd                                  # Entry point shipped in the bundle
+├── setup.ps1                   # local Windows build (same logic as package.sh)
+├── setup.sh                    # local Linux/WSL build
+├── rosbe.cmd                   # status probe; shipped in the bundle, not used by CI
 ├── scripts/
-│   ├── package.sh                             # CI: build release archives
-│   └── submit-winget.sh                       # CI: PR to microsoft/winget-pkgs
+│   ├── versions.env            # upstream version constants
+│   ├── package.sh              # CI: build release archives
+│   └── publish-winget.sh       # CI: open PR on microsoft/winget-pkgs
 ├── winget/
-│   ├── manifests/r/ReactOS/RosBE/<version>/   # Winget manifest
-│   └── personalize.yaml                       # winget configure for dev deps
-├── .github/workflows/release.yml              # tag push → release → manifest PR
-└── LICENSE
+│   ├── manifests/r/ReactOS/RosBE/1.0.0/   # template; CI clones + bumps per version
+│   └── personalize.yaml
+└── .github/workflows/release.yml          # publish: trigger
 ```
 
-## Release flow
+## Local testing
 
 ```bash
-git tag v1.0.0 && git push origin v1.0.0
-#   → .github/workflows/release.yml triggers
-#   → scripts/package.sh on Ubuntu runner
-#      - downloads upstream LLVM / winlibs / CMake / Ninja / win_flex_bison
-#      - assembles rosbe-modern-1.0.0-linux-x64.tar.xz
-#      - assembles rosbe-modern-1.0.0-win-x64.zip
-#      - uploads both + SHA256SUMS.txt to the GitHub Release
+# Build archives + generate a version directory locally
+./scripts/package.sh 0.0.0-test
 
-./scripts/submit-winget.sh 1.0.0
-#   → updates winget manifest with the release SHA256
-#   → prints PR instructions for microsoft/winget-pkgs
+# Inspect what CI will publish
+ls dist/
+cat dist/SHA256SUMS.txt
+
+# Dry-run the winget PR script (needs GH_TOKEN; will actually open a PR)
+# GH_TOKEN=<pat> ./scripts/publish-winget.sh 1.2.0
 ```
 
-## Scope
+## Reference implementations
 
-RosBE is the **toolchain only**. It does not ship:
-
-- ReactOS source
-- ReactOS `configure.cmd` / `configure.sh`
-- CMake toolchain files (`toolchain-gcc.cmake`, `toolchain-clang.cmake`)
-- Anything under `sdk/cmake/*`
-
-Those live in ReactOS. ReactOS's build scripts discover RosBE tools by their
-well-known winget install path.
+- `microsoft/winget-create` — `SubmitPRAsync` (authoritative)
+- `russellbanks/Komac` — branch name / commit title conventions
+- `vedantmgoyal9/winget-releaser` — orchestration reference
+- [Microsoft's submission docs](https://learn.microsoft.com/en-us/windows/package-manager/package/repository)
 
 ## License
 
-MIT — see [LICENSE](LICENSE). Bundled third-party toolchains keep their own
-licenses.
+MIT.
