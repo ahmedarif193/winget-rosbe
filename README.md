@@ -11,13 +11,28 @@ A modernized ReactOS Build Environment (RosBE) delivered through winget.
 
 ## Install
 
+Windows:
+
 ```powershell
 winget install rosbe
 ```
 
-That's all you need. After install, ReactOS's own `configure.cmd` /
-`configure.sh` / `cmake` pick up the toolchain from the standard winget
-install path — no PATH edits required.
+Linux:
+
+```bash
+wget -qO- https://raw.githubusercontent.com/ahmedarif193/winget-rosbe/main/rosbe-linux-bootstrap.sh | sh
+```
+
+The Linux bootstrap installs a fresh toolchain tree under
+`~/.local/opt/rosbe` and replaces any previous tree at that path.
+
+On Windows, ReactOS's own `configure.cmd` / `cmake` pick up the toolchain
+from the standard winget install path.
+
+On Linux, run `~/.local/bin/rosbe-shell` or source
+`~/.local/opt/rosbe/rosbe-env.sh` before configuring ReactOS.
+The Linux bootstrap installs only the toolchains; use your distro packages
+for CMake, Ninja, Flex, and Bison.
 
 ## What you get
 
