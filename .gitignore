@@ -1,7 +1,10 @@
-# Extracted toolchains & tools (downloaded by setup.ps1 / setup.sh)
-toolchains/
-tools/
+# Extracted toolchains & tools (dropped next to setup.ps1 / setup.sh)
 .cache/
+cmake-*/
+ninja-*/
+win_flex_bison-*/
+llvm-mingw/
+mingw-gcc/
 
 # Packaging artifacts
 dist/

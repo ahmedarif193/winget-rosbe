@@ -3,10 +3,10 @@
 A modernized ReactOS Build Environment (RosBE) delivered through winget.
 
 > **Not an official RosBE release.** This package ships the latest upstream
-> toolchains (Clang 21 / LLVM-MinGW, GCC 15.2 via winlibs, CMake 3.31,
-> Ninja 1.12, flex/bison) bundled the way ReactOS expects them. The goal is
-> for this to eventually become the default RosBE used when building
-> upstream ReactOS — for now treat it as an experimental / preview build.
+> toolchains (Clang 21 / LLVM-MinGW, GCC 15.2 built via crosstool-NG, CMake
+> 3.31, Ninja 1.12, flex/bison) bundled the way ReactOS expects them. The
+> goal is for this to eventually become the default RosBE used when building
+> upstream ReactOS; for now treat it as an experimental / preview build.
 
 ## Install
 
@@ -23,7 +23,7 @@ install path — no PATH edits required.
 | Component | Version |
 |-----------|---------|
 | LLVM-MinGW (Clang + lld + libc++) | 21.1.7 (20251202) |
-| MinGW-GCC via winlibs | 15.2.0 (+ mingw-w64 14.0.0, UCRT) |
+| MinGW-GCC (crosstool-NG Canadian-cross, UCRT) | 15.2.0 |
 | CMake | 3.31.6 |
 | Ninja | 1.12.1 |
 | Flex + Bison (winflexbison) | 2.6.4 / 3.8.2 |
