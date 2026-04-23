@@ -9,6 +9,6 @@ Installers:
     NestedInstallerFiles:
       - RelativeFilePath: rosbe.exe
     InstallerUrl: https://github.com/ahmedarif193/winget-rosbe/releases/download/v1.0.0/rosbe-1.0.0-win-x64.zip
-    InstallerSha256: 5F07C724D5026B46F021CB3BA7E80B0C42E6C2658AAD258ECAA68D0E9F38C6E3
+    InstallerSha256: CF2D45754BA82B679AA56FB246382AB5B2570941D1F0DCF1CDE355DCB43CF092
 ManifestType: installer
 ManifestVersion: 1.6.0
