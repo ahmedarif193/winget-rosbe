@@ -201,6 +201,10 @@ package_windows_x64() {
     add_prefix_copies "${staging}/toolchains/mingw-gcc/x86_64-w64-mingw32/bin" "x86_64-w64-mingw32"
     add_prefix_copies "${staging}/toolchains/mingw-gcc/i686-w64-mingw32/bin"   "i686-w64-mingw32"
 
+    info "Trimming bundle..."
+    trim_bundle "${staging}/toolchains/mingw-gcc/x86_64-w64-mingw32"
+    trim_bundle "${staging}/toolchains/mingw-gcc/i686-w64-mingw32"
+
     info "Zipping ${pkg} (flat, ~700MB to ~300MB compressed)..."
     # Zip from INSIDE the staging dir so files are at the zip root, not under
     # a ${pkg}/ subdir. Winget extracts this directly under the package's
@@ -215,6 +219,30 @@ add_prefix_copies() {
     for tool in windres windmc ar nm objcopy objdump ranlib readelf strip strings size dlltool as addr2line ld ld.bfd; do
         [[ -f "${bin}/${tool}.exe" && ! -f "${bin}/${prefix}-${tool}.exe" ]] && \
             cp "${bin}/${tool}.exe" "${bin}/${prefix}-${tool}.exe"
+    done
+}
+
+# Strip files ReactOS doesn't use AND known false-positive triggers (ndisasm
+# specifically gets flagged as Trojan:Win32/Pomal!rfn by Defender's ML
+# heuristic; nasm assembly isn't used by ReactOS at all).
+trim_bundle() {
+    local root="$1"
+    local rm_paths=(
+        bin/nasm.exe                 # NASM assembler, unused by ReactOS
+        bin/ndisasm.exe              # NASM disassembler, ML false-positive
+        bin/gfortran.exe bin/gfortran-15.exe
+        bin/gdc.exe bin/gdc-15.exe   # D compiler
+        bin/cmake-gui.exe            # we ship our own cmake.exe
+        bin/doxygen.exe              # docs generator, unused
+        bin/ctags.exe bin/etags.exe
+        share/doc share/info share/man share/locale share/gettext
+        libexec/gcc/*/*/cc1obj.exe libexec/gcc/*/*/cc1objplus.exe
+        libexec/gcc/*/*/f951.exe
+        libexec/gcc/*/*/cc1gccgo.exe libexec/gcc/*/*/cc1d.exe
+        libexec/gcc/*/*/lto1.exe     # LTO not used by ReactOS, often flagged
+    )
+    for p in "${rm_paths[@]}"; do
+        rm -rf "${root}"/${p} 2>/dev/null || true
     done
 }
 
