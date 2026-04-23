@@ -27,7 +27,8 @@ The Linux bootstrap installs a fresh toolchain tree under
 `~/.local/opt/rosbe` and replaces any previous tree at that path.
 
 On Windows, ReactOS's own `configure.cmd` / `cmake` pick up the toolchain
-from the standard winget install path.
+from the standard winget install path. The package also exposes a lightweight
+`rosbe` command that verifies the bundle layout and prints the key paths.
 
 On Linux, run `~/.local/bin/rosbe-shell` or source
 `~/.local/opt/rosbe/rosbe-env.sh` before configuring ReactOS.

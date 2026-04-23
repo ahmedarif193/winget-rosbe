@@ -89,7 +89,7 @@ PR_BODY="### ${PR_KIND} from [RosBE Modern](https://github.com/ahmedarif193/wing
 - **Release**: https://github.com/ahmedarif193/winget-rosbe/releases/tag/v${VERSION}
 - **Installer SHA256 (x64)**: \`${SHA256}\`
 
-A modern, winget-installable build environment for [ReactOS](https://reactos.org), bundling LLVM-MinGW (Clang), MinGW-GCC via winlibs, CMake, Ninja, Flex and Bison.
+A modern, winget-installable build environment for [ReactOS](https://reactos.org), bundling LLVM-MinGW (Clang), MinGW-GCC via crosstool-NG Canadian-cross, CMake, Ninja, Flex and Bison.
 
 #### Checklist
 

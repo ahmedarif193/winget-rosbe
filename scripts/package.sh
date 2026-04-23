@@ -75,7 +75,7 @@ download() {
 
 ensure_tools() {
     local missing=()
-    for cmd in curl tar unzip zip sha256sum; do
+    for cmd in curl tar unzip zip sha256sum x86_64-w64-mingw32-gcc; do
         command -v "${cmd}" &>/dev/null || missing+=("${cmd}")
     done
     if [[ ${#missing[@]} -gt 0 ]]; then
@@ -110,6 +110,16 @@ move_extracted_dir() {
 
     chmod -R u+rwX "${dest}" 2>/dev/null || true
     rm -rf "${tmp}"
+}
+
+copy_windows_launcher() {
+    local staging="$1"
+
+    cp "${ROOT_DIR}/LICENSE" "${ROOT_DIR}/README.md" "${staging}/"
+    cp "${ROOT_DIR}/rosbe.cmd" "${staging}/"
+
+    info "Compiling rosbe.exe..."
+    x86_64-w64-mingw32-gcc -O2 -s -o "${staging}/rosbe.exe" "${ROOT_DIR}/rosbe.c"
 }
 
 # ── Linux package ─────────────────────────────────────────────────────────────
@@ -160,8 +170,10 @@ package_linux() {
 }
 
 # ── Windows package ──────────────────────────────────────────────────────────
-# Layout (each component at its own top-level folder, no wrapper scripts):
+# Layout (each component at its own top-level folder):
 #   <root>/
+#     rosbe.exe
+#     rosbe.cmd
 #     cmake-${CMAKE_VERSION}/bin/cmake.exe ...
 #     ninja-${NINJA_VERSION}/ninja.exe
 #     win_flex_bison-${WINFLEXBISON_VERSION}/win_flex.exe, win_bison.exe ...
@@ -175,7 +187,7 @@ package_windows_x64() {
     rm -rf "${staging}"
     mkdir -p "${staging}/mingw-gcc"
 
-    cp "${ROOT_DIR}/LICENSE" "${ROOT_DIR}/README.md" "${staging}/"
+    copy_windows_launcher "${staging}"
 
     # CMake (Windows) -> cmake-<version>/
     download "${CMAKE_WIN_URL}" "${CACHE_DIR}/cmake-win.zip"
