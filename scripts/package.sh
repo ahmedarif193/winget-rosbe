@@ -83,6 +83,35 @@ ensure_tools() {
     fi
 }
 
+reset_tmp_dir() {
+    local tmp="$1"
+    rm -rf "${tmp}"
+    mkdir -p "${tmp}"
+}
+
+move_extracted_dir() {
+    local tmp="$1" name_glob="$2" dest="$3"
+    local matches=()
+    mapfile -t matches < <(find "${tmp}" -mindepth 1 -maxdepth 1 -type d -name "${name_glob}" -print)
+
+    if [[ ${#matches[@]} -ne 1 ]]; then
+        error "Unexpected archive layout in ${tmp}: expected one ${name_glob} directory, found ${#matches[@]}"
+    fi
+
+    chmod -R u+rwX "${tmp}" 2>/dev/null || true
+    mkdir -p "$(dirname "${dest}")"
+    rm -rf "${dest}"
+
+    if ! mv "${matches[0]}" "${dest}"; then
+        info "Direct move failed for ${name_glob}; copying into place..."
+        rm -rf "${dest}"
+        cp -a "${matches[0]}" "${dest}"
+    fi
+
+    chmod -R u+rwX "${dest}" 2>/dev/null || true
+    rm -rf "${tmp}"
+}
+
 # ── Linux package ─────────────────────────────────────────────────────────────
 # Layout (each component at its own top-level folder):
 #   <root>/
@@ -151,9 +180,9 @@ package_windows_x64() {
     # CMake (Windows) -> cmake-<version>/
     download "${CMAKE_WIN_URL}" "${CACHE_DIR}/cmake-win.zip"
     info "Extracting cmake-win.zip..."
+    reset_tmp_dir "${CACHE_DIR}/cmake-tmp"
     unzip -qo "${CACHE_DIR}/cmake-win.zip" -d "${CACHE_DIR}/cmake-tmp"
-    mv "${CACHE_DIR}/cmake-tmp"/cmake-* "${staging}/cmake-${CMAKE_VERSION}"
-    rm -rf "${CACHE_DIR}/cmake-tmp"
+    move_extracted_dir "${CACHE_DIR}/cmake-tmp" "cmake-*" "${staging}/cmake-${CMAKE_VERSION}"
 
     # Ninja (Windows) -> ninja-<version>/ninja.exe
     download "${NINJA_WIN_URL}" "${CACHE_DIR}/ninja-win.zip"
@@ -173,24 +202,22 @@ package_windows_x64() {
     # LLVM-MinGW (Windows) -> llvm-mingw/
     download "${LLVM_WIN_X64_URL}" "${CACHE_DIR}/llvm-win-x64.zip"
     info "Extracting llvm-win-x64.zip (~500MB extracted)..."
+    reset_tmp_dir "${CACHE_DIR}/llvm-tmp"
     unzip -qo "${CACHE_DIR}/llvm-win-x64.zip" -d "${CACHE_DIR}/llvm-tmp"
-    mv "${CACHE_DIR}/llvm-tmp"/llvm-mingw-* "${staging}/llvm-mingw"
-    rm -rf "${CACHE_DIR}/llvm-tmp"
+    move_extracted_dir "${CACHE_DIR}/llvm-tmp" "llvm-mingw-*" "${staging}/llvm-mingw"
 
     # MinGW-GCC (Canadian-cross, ahmedarif193/mingw-gcc15.2) -> mingw-gcc/<triple>/
     download "${GCC_WIN_X64_URL}" "${CACHE_DIR}/gcc-win-x64.zip"
     info "Extracting gcc-win-x64.zip..."
-    mkdir -p "${CACHE_DIR}/gcc-win-x64-tmp"
+    reset_tmp_dir "${CACHE_DIR}/gcc-win-x64-tmp"
     unzip -qo "${CACHE_DIR}/gcc-win-x64.zip" -d "${CACHE_DIR}/gcc-win-x64-tmp"
-    mv "${CACHE_DIR}/gcc-win-x64-tmp/x86_64-w64-mingw32-winhost" "${staging}/mingw-gcc/x86_64-w64-mingw32"
-    rm -rf "${CACHE_DIR}/gcc-win-x64-tmp"
+    move_extracted_dir "${CACHE_DIR}/gcc-win-x64-tmp" "x86_64-w64-mingw32-winhost" "${staging}/mingw-gcc/x86_64-w64-mingw32"
 
     download "${GCC_WIN_I686_URL}" "${CACHE_DIR}/gcc-win-i686.zip"
     info "Extracting gcc-win-i686.zip..."
-    mkdir -p "${CACHE_DIR}/gcc-win-i686-tmp"
+    reset_tmp_dir "${CACHE_DIR}/gcc-win-i686-tmp"
     unzip -qo "${CACHE_DIR}/gcc-win-i686.zip" -d "${CACHE_DIR}/gcc-win-i686-tmp"
-    mv "${CACHE_DIR}/gcc-win-i686-tmp/i686-w64-mingw32-winhost" "${staging}/mingw-gcc/i686-w64-mingw32"
-    rm -rf "${CACHE_DIR}/gcc-win-i686-tmp"
+    move_extracted_dir "${CACHE_DIR}/gcc-win-i686-tmp" "i686-w64-mingw32-winhost" "${staging}/mingw-gcc/i686-w64-mingw32"
 
     info "Trimming bundle..."
     trim_bundle "${staging}/mingw-gcc/x86_64-w64-mingw32"

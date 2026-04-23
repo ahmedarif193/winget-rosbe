@@ -107,7 +107,7 @@ cat > "$BODY_FILE" <<EOF
 
 Bundled upstream versions:
 - LLVM-MinGW: \`${LLVM_VERSION}\`
-- winlibs GCC: \`${WINLIBS_TAG}\` (GCC ${GCC_VERSION} + mingw-w64 ${MINGW_W64_VERSION})
+- MinGW-GCC (ct-ng Canadian-cross): \`${GCC_VERSION}\` (${GCC_TAG} from ahmedarif193/mingw-gcc15.2)
 - CMake: \`${CMAKE_VERSION}\`
 - Ninja: \`${NINJA_VERSION}\`
 - WinFlexBison: \`${WINFLEXBISON_VERSION}\`
