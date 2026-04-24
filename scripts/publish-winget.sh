@@ -119,8 +119,13 @@ Managed toolchain versions:
 - [x] Only modifies one manifest
 EOF
 
-PR_URL="$(gh pr create --repo "$UPSTREAM" \
-    --base master --head "${FORK_USER}:${BRANCH}" \
-    --title "$PR_TITLE" --body-file "$BODY_FILE")"
+PR_BODY_CONTENT="$(cat "$BODY_FILE")"
+PR_URL="$(gh api "repos/${UPSTREAM}/pulls" \
+    --method POST \
+    -f title="$PR_TITLE" \
+    -f head="${FORK_USER}:${BRANCH}" \
+    -f base="master" \
+    -f body="$PR_BODY_CONTENT" \
+    --jq .html_url)"
 
 echo "Opened PR: $PR_URL"
