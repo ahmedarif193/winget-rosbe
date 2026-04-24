@@ -87,9 +87,10 @@ PR_BODY="### ${PR_KIND} from [RosBE Modern](https://github.com/ahmedarif193/wing
 
 - **Version**: \`${VERSION}\`
 - **Release**: https://github.com/ahmedarif193/winget-rosbe/releases/tag/v${VERSION}
-- **Installer SHA256 (x64)**: \`${SHA256}\`
+- **Bootstrapper SHA256 (x64)**: \`${SHA256}\`
+- **Post-install**: \`rosbe install\` then \`rosbe enable\`
 
-A modern, winget-installable build environment for [ReactOS](https://reactos.org), bundling LLVM-MinGW (Clang), MinGW-GCC via crosstool-NG Canadian-cross, CMake, Ninja, Flex and Bison.
+A lightweight, winget-installable Rust bootstrapper for [ReactOS](https://reactos.org). The `winget` package installs `rosbe`, and `rosbe install` later downloads and verifies the RosBE toolchain bundle on demand.
 
 #### Checklist
 

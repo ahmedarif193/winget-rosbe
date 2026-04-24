@@ -54,10 +54,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-pc-windows-gnu
+
       - name: Install deps
         run: |
           sudo apt-get update -qq
-          sudo apt-get install -y -qq zip unzip xz-utils p7zip-full curl jq uuid-runtime gcc-mingw-w64-x86-64
+          sudo apt-get install -y -qq zip unzip xz-utils p7zip-full curl jq uuid-runtime gcc-mingw-w64-x86-64 wine64
 
       - name: Delete existing release+tag (re-publish support)
         env:
@@ -70,10 +74,18 @@ jobs:
             echo "No existing release v$VERSION, proceeding."
           fi
 
+      - name: Test bootstrapper
+        run: cargo test --manifest-path bootstrapper/Cargo.toml --locked
+
       - name: Build archives
         run: |
           chmod +x scripts/package.sh
           ./scripts/package.sh --windows-only "$VERSION"
+
+      - name: Verify bootstrapper end to end
+        run: |
+          chmod +x scripts/verify-bootstrapper-e2e.sh
+          ./scripts/verify-bootstrapper-e2e.sh "$VERSION"
 
       - name: Materialize winget manifest for this version
         run: |
@@ -85,12 +97,13 @@ jobs:
             for f in "$SRC"/*.yaml; do
               name=$(basename "$f")
               sed "s|PackageVersion: 1.0.0|PackageVersion: $VERSION|; \
-                   s|rosbe-1.0.0-win-x64.zip|rosbe-$VERSION-win-x64.zip|g; \
+                   s|rosbe-bootstrapper-1.0.0-win-x64.zip|rosbe-bootstrapper-$VERSION-win-x64.zip|g; \
                    s|releases/download/v1.0.0/|releases/download/v$VERSION/|g" \
                   "$f" > "$DST/$name"
             done
           fi
-          HASH=$(awk '/win-x64.zip/ {print toupper($1)}' dist/SHA256SUMS.txt)
+          ASSET="rosbe-bootstrapper-$VERSION-win-x64.zip"
+          HASH=$(awk -v asset="$ASSET" '$2==asset {print toupper($1)}' dist/SHA256SUMS.txt)
           sed -i "s|InstallerSha256:.*|InstallerSha256: $HASH|" \
               "$DST/ReactOS.RosBE.installer.yaml"
 
@@ -103,7 +116,7 @@ jobs:
             echo "body<<RELEASEBODYEOF"
             echo "## RosBE Modern v$VERSION"
             echo ""
-            echo "### Bundled versions"
+            echo "### Managed toolchain versions"
             echo "| Component | Version |"
             echo "|-----------|---------|"
             echo "| LLVM-MinGW | $LLVM_VERSION |"
@@ -115,6 +128,8 @@ jobs:
             echo "### Install"
             echo '```'
             echo "winget install ReactOS.RosBE"
+            echo "rosbe install"
+            echo "rosbe enable"
             echo '```'
             echo ""
             echo "### Checksums"
@@ -132,6 +147,7 @@ jobs:
           body: ${{ steps.body.outputs.body }}
           files: |
             dist/*.tar.xz
+            dist/*.exe
             dist/*.zip
             dist/SHA256SUMS.txt
           draft: false

@@ -1,20 +1,21 @@
 # winget-rosbe
 
+A modernized ReactOS Build Environment (RosBE) bootstrapper and toolchain bundle.
 
-A modernized ReactOS Build Environment (RosBE) delivered through winget.
-
-> **Not an official RosBE release.** This package ships the latest upstream
-> toolchains (Clang 21 / LLVM-MinGW, GCC 15.2 built via crosstool-NG, CMake
-> 3.31, Ninja 1.12, flex/bison) bundled the way ReactOS expects them. The
-> goal is for this to eventually become the default RosBE used when building
-> upstream ReactOS; for now treat it as an experimental / preview build.
+> **Not an official RosBE release.** On Windows, `winget` installs a small Rust
+> bootstrapper (`rosbe.exe`). That bootstrapper later downloads and verifies the
+> full toolchain bundle on demand. The goal is for this to eventually become the
+> default RosBE used when building upstream ReactOS; for now treat it as an
+> experimental / preview build.
 
 ## Install
 
 Windows:
 
 ```powershell
-winget install rosbe
+winget install ReactOS.RosBE
+rosbe install
+rosbe enable
 ```
 
 Linux:
@@ -26,9 +27,20 @@ wget -qO- https://raw.githubusercontent.com/ahmedarif193/winget-rosbe/main/rosbe
 The Linux bootstrap installs a fresh toolchain tree under
 `~/.local/opt/rosbe` and replaces any previous tree at that path.
 
-On Windows, ReactOS's own `configure.cmd` / `cmake` pick up the toolchain
-from the standard winget install path. The package also exposes a lightweight
-`rosbe` command that verifies the bundle layout and prints the key paths.
+On Windows, `winget` installs only the `rosbe` bootstrapper. The toolchain ZIP
+is downloaded later by `rosbe install`, verified against the published
+`SHA256SUMS.txt`, then activated locally under `%LOCALAPPDATA%\RosBE`. The
+bootstrapper also provides `rosbe status` to verify the bundle layout and the
+active toolchain paths.
+
+Useful Windows commands:
+
+```powershell
+rosbe status
+rosbe update
+rosbe disable
+rosbe remove
+```
 
 On Linux, run `~/.local/bin/rosbe-shell` or source
 `~/.local/opt/rosbe/rosbe-env.sh` before configuring ReactOS.
@@ -46,6 +58,13 @@ for CMake, Ninja, Flex, and Bison.
 | Flex + Bison (winflexbison) | 2.6.4 / 3.8.2 |
 
 Targets: `i686` and `x86_64` (Windows UCRT).
+
+## Repository layout
+
+- `bootstrapper/`: Rust source for the Windows `rosbe.exe` bootstrapper.
+- `scripts/package.sh`: produces the Windows toolchain ZIP, `rosbe.exe`, the
+  winget bootstrapper ZIP, and `SHA256SUMS.txt`.
+- `winget/`: local manifest templates used when publishing to `winget-pkgs`.
 
 ## Links
 

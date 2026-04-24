@@ -5,7 +5,7 @@
 #
 # Prerequisites:
 #   - GitHub release v<version> already exists on ahmedarif193/winget-rosbe
-#     with the installer ZIP and SHA256SUMS.txt attached.
+#     with the bootstrapper ZIP, toolchain ZIP, and SHA256SUMS.txt attached.
 #   - Local manifests at winget/manifests/r/ReactOS/RosBE/<version>/*.yaml
 #     with InstallerUrl and InstallerSha256 already correct.
 #   - GH_TOKEN is a PAT (classic public_repo, or fine-grained with:
@@ -39,6 +39,7 @@ UUID="$(uuidgen | tr -d - | tr 'a-f' 'A-F')"
 BRANCH="${PKG_ID}-${VERSION}-${UUID}"
 PR_TITLE="New version: ${PKG_ID} version ${VERSION}"
 MANIFEST_PATH="manifests/${LETTER}/ReactOS/RosBE/${VERSION}"
+BOOTSTRAPPER_ASSET="rosbe-bootstrapper-${VERSION}-win-x64.zip"
 
 EXISTING_PR="$(gh pr list --repo "$UPSTREAM" \
     --search "head:${FORK_USER} ${PKG_ID} ${VERSION} in:title" \
@@ -92,7 +93,7 @@ git -C "$TMP" push --quiet -u origin "$BRANCH"
 HASHES="$(gh release view "v${VERSION}" --repo "$RELEASE_REPO" \
     --json assets --jq '.assets[] | select(.name=="SHA256SUMS.txt") | .url' \
     | xargs -I{} curl -sL {} 2>/dev/null || true)"
-X64_HASH="$(echo "$HASHES" | awk '/win-x64\.zip/ {print toupper($1)}' | head -1)"
+X64_HASH="$(echo "$HASHES" | awk -v asset="$BOOTSTRAPPER_ASSET" '$2==asset {print toupper($1)}' | head -1)"
 
 # shellcheck source=versions.env
 source "${ROOT_DIR}/scripts/versions.env"
@@ -103,9 +104,10 @@ cat > "$BODY_FILE" <<EOF
 - **Package**: \`${PKG_ID}\`
 - **Version**: \`${VERSION}\`
 - **Release**: https://github.com/${RELEASE_REPO}/releases/tag/v${VERSION}
-- **Installer SHA256 (x64)**: \`${X64_HASH:-see manifest}\`
+- **Bootstrapper SHA256 (x64)**: \`${X64_HASH:-see manifest}\`
+- **Post-install**: \`rosbe install\` then \`rosbe enable\`
 
-Bundled upstream versions:
+Managed toolchain versions:
 - LLVM-MinGW: \`${LLVM_VERSION}\`
 - MinGW-GCC (ct-ng Canadian-cross): \`${GCC_VERSION}\` (${GCC_TAG} from ahmedarif193/mingw-gcc15.2)
 - CMake: \`${CMAKE_VERSION}\`

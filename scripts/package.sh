@@ -5,6 +5,8 @@
 # Outputs in dist/:
 #   rosbe-<version>-linux-x64.tar.xz
 #   rosbe-<version>-win-x64.zip
+#   rosbe-bootstrapper-<version>-win-x64.zip
+#   rosbe.exe
 #   SHA256SUMS.txt
 
 set -euo pipefail
@@ -75,11 +77,11 @@ download() {
 
 ensure_tools() {
     local missing=()
-    for cmd in curl tar unzip zip sha256sum x86_64-w64-mingw32-gcc; do
+    for cmd in curl tar unzip zip sha256sum cargo x86_64-w64-mingw32-gcc; do
         command -v "${cmd}" &>/dev/null || missing+=("${cmd}")
     done
     if [[ ${#missing[@]} -gt 0 ]]; then
-        error "Missing: ${missing[*]}. On Debian/Ubuntu: sudo apt install ${missing[*]}"
+        error "Missing: ${missing[*]}. Install the system archive tools, the MinGW x64 cross-compiler, and a Rust toolchain with the x86_64-pc-windows-gnu target."
     fi
 }
 
@@ -112,14 +114,22 @@ move_extracted_dir() {
     rm -rf "${tmp}"
 }
 
-copy_windows_launcher() {
-    local staging="$1"
+build_bootstrapper_windows() {
+    local target="x86_64-pc-windows-gnu"
+    local release_dir="${ROOT_DIR}/bootstrapper/target/${target}/release"
+    local asset="rosbe-bootstrapper-${VERSION}-win-x64.zip"
 
-    cp "${ROOT_DIR}/LICENSE" "${ROOT_DIR}/README.md" "${staging}/"
-    cp "${ROOT_DIR}/rosbe.cmd" "${staging}/"
+    info "Building rosbe.exe bootstrapper..."
+    cargo build \
+        --manifest-path "${ROOT_DIR}/bootstrapper/Cargo.toml" \
+        --locked \
+        --release \
+        --target "${target}"
 
-    info "Compiling rosbe.exe..."
-    x86_64-w64-mingw32-gcc -O2 -s -o "${staging}/rosbe.exe" "${ROOT_DIR}/rosbe.c"
+    mkdir -p "${DIST_DIR}"
+    cp "${release_dir}/rosbe.exe" "${DIST_DIR}/rosbe.exe"
+    (cd "${DIST_DIR}" && rm -f "${asset}" && zip -q "${asset}" rosbe.exe)
+    ok "Created rosbe.exe and ${asset}"
 }
 
 # ── Linux package ─────────────────────────────────────────────────────────────
@@ -170,10 +180,8 @@ package_linux() {
 }
 
 # ── Windows package ──────────────────────────────────────────────────────────
-# Layout (each component at its own top-level folder):
+# Layout (each component at its own top-level folder, no wrapper scripts):
 #   <root>/
-#     rosbe.exe
-#     rosbe.cmd
 #     cmake-${CMAKE_VERSION}/bin/cmake.exe ...
 #     ninja-${NINJA_VERSION}/ninja.exe
 #     win_flex_bison-${WINFLEXBISON_VERSION}/win_flex.exe, win_bison.exe ...
@@ -187,7 +195,7 @@ package_windows_x64() {
     rm -rf "${staging}"
     mkdir -p "${staging}/mingw-gcc"
 
-    copy_windows_launcher "${staging}"
+    cp "${ROOT_DIR}/LICENSE" "${ROOT_DIR}/README.md" "${staging}/"
 
     # CMake (Windows) -> cmake-<version>/
     download "${CMAKE_WIN_URL}" "${CACHE_DIR}/cmake-win.zip"
@@ -275,7 +283,7 @@ trim_bundle() {
 generate_checksums() {
     info "Generating SHA256 checksums..."
     ( cd "${DIST_DIR}" && shopt -s nullglob && \
-      files=( *.tar.xz *.zip ) && \
+      files=( *.tar.xz *.zip *.exe ) && \
       [[ ${#files[@]} -gt 0 ]] && sha256sum "${files[@]}" > SHA256SUMS.txt )
     echo ""
     cat "${DIST_DIR}/SHA256SUMS.txt"
@@ -296,6 +304,7 @@ main() {
     else
         info "Skipping linux package (--windows-only)"
     fi
+    build_bootstrapper_windows
     package_windows_x64
     generate_checksums
 
