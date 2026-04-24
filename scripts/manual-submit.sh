@@ -83,7 +83,7 @@ else
 fi
 
 PR_TITLE="${PR_KIND}: ${PKG_ID} version ${VERSION}"
-PR_BODY="### ${PR_KIND} from [RosBE Modern](https://github.com/ahmedarif193/winget-rosbe) :rocket:
+PR_BODY="### ${PR_KIND} from [ReactOS RosBE](https://github.com/ahmedarif193/winget-rosbe) :rocket:
 
 - **Version**: \`${VERSION}\`
 - **Release**: https://github.com/ahmedarif193/winget-rosbe/releases/tag/v${VERSION}

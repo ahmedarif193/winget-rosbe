@@ -138,7 +138,7 @@ jobs:
           source scripts/versions.env
           {
             echo "body<<RELEASEBODYEOF"
-            echo "## RosBE Modern v$VERSION"
+            echo "## ReactOS RosBE v$VERSION"
             echo ""
             echo "### Managed toolchain versions"
             echo "| Component | Version |"
@@ -174,7 +174,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v${{ needs.gate.outputs.version }}
-          name: RosBE Modern v${{ needs.gate.outputs.version }}
+          name: ReactOS RosBE v${{ needs.gate.outputs.version }}
           body: ${{ steps.body.outputs.body }}
           files: |
             dist/*.tar.xz

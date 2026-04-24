@@ -24,7 +24,7 @@ RELEASE_REPO="ahmedarif193/winget-rosbe"
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 SRC_DIR="${ROOT_DIR}/winget/manifests/${LETTER}/ReactOS/RosBE/${VERSION}"
 COMMIT_EMAIL="actions@github.com"
-COMMIT_NAME="RosBE Modern Bot"
+COMMIT_NAME="ReactOS RosBE Bot"
 
 [[ -d "$SRC_DIR" ]] || { echo "ERROR: no manifests at $SRC_DIR"; exit 1; }
 for f in "${PKG_ID}.yaml" "${PKG_ID}.installer.yaml" "${PKG_ID}.locale.en-US.yaml"; do
@@ -99,7 +99,7 @@ X64_HASH="$(echo "$HASHES" | awk -v asset="$BOOTSTRAPPER_ASSET" '$2==asset {prin
 source "${ROOT_DIR}/scripts/versions.env"
 BODY_FILE="$TMP/pr-body.md"
 cat > "$BODY_FILE" <<EOF
-### Update from [RosBE Modern](https://github.com/${RELEASE_REPO}) :rocket:
+### Update from [ReactOS RosBE](https://github.com/${RELEASE_REPO}) :rocket:
 
 - **Package**: \`${PKG_ID}\`
 - **Version**: \`${VERSION}\`

@@ -1,4 +1,4 @@
-# RosBE Modern - Windows Dev Environment via winget configure
+# ReactOS RosBE - Windows Dev Environment via winget configure
 # Usage (PowerShell as Admin):
 #   winget configure --file personalize.yaml
 #   winget configure --file personalize.yaml --validate-only

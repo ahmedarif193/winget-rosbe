@@ -24,7 +24,7 @@ set "ROSBE_GCC_X64=!ROSBE_ROOT!\mingw-gcc\x86_64-w64-mingw32"
 set "ROSBE_GCC_X86=!ROSBE_ROOT!\mingw-gcc\i686-w64-mingw32"
 
 echo.
-echo   RosBE Modern - ReactOS Build Environment
+echo   ReactOS RosBE - ReactOS Build Environment
 echo   ==========================================
 echo.
 echo   Root: !ROSBE_ROOT!

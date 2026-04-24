@@ -331,7 +331,7 @@ generate_checksums() {
 
 # ── Main ──────────────────────────────────────────────────────────────────────
 main() {
-    echo -e "${GREEN}RosBE Modern - Packager v${VERSION}${NC}"
+    echo -e "${GREEN}ReactOS RosBE - Packager v${VERSION}${NC}"
     echo ""
 
     ensure_tools

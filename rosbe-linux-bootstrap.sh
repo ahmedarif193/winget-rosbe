@@ -1,5 +1,5 @@
 #!/bin/sh
-# RosBE Modern - Linux bootstrap installer
+# ReactOS RosBE - Linux bootstrap installer
 #
 # Intended use:
 #   wget -qO- https://raw.githubusercontent.com/ahmedarif193/winget-rosbe/main/rosbe-linux-bootstrap.sh | sh
@@ -41,7 +41,7 @@ trap cleanup EXIT
 trap 'cleanup; exit 130' INT TERM
 
 banner() {
-    printf '%s\n' "${GREEN}RosBE Modern - Linux Bootstrap${NC}"
+    printf '%s\n' "${GREEN}ReactOS RosBE - Linux Bootstrap${NC}"
     printf '%s\n\n' "${GREEN}================================${NC}"
     printf 'Install root: %s\n' "${INSTALL_ROOT}"
     printf 'Toolchains:   LLVM-MinGW %s, MinGW-GCC %s\n\n' "${LLVM_VERSION}" "${GCC_VERSION}"
@@ -164,7 +164,7 @@ write_env_file() {
     env_file="${INSTALL_ROOT}/rosbe-env.sh"
 
     cat > "${env_file}" <<EOF
-# RosBE Modern environment. Source this file from a shell:
+# ReactOS RosBE environment. Source this file from a shell:
 #   . "${env_file}"
 
 export ROSBE_ROOT="${INSTALL_ROOT}"
@@ -204,7 +204,7 @@ EOF
 }
 
 print_summary() {
-    printf '\n%s\n' "${GREEN}RosBE Modern installed.${NC}"
+    printf '\n%s\n' "${GREEN}ReactOS RosBE installed.${NC}"
     printf '\nUse it with:\n'
     printf '  %s/rosbe-shell\n\n' "${BIN_DIR}"
     printf 'Or source it in the current shell:\n'

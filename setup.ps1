@@ -1,7 +1,7 @@
 #Requires -Version 5.1
 <#
 .SYNOPSIS
-    RosBE Modern - Windows Setup Script
+    ReactOS RosBE - Windows Setup Script
 .DESCRIPTION
     Downloads and extracts all toolchains + build tools for ReactOS development
     into a flat per-component layout that mirrors the winget package.
@@ -224,7 +224,7 @@ function Setup-MingwGcc {
 # ── Main ──────────────────────────────────────────────────────────────────────
 function Main {
     Write-Host ""
-    Write-Host "  RosBE Modern - Windows Setup" -ForegroundColor Green
+    Write-Host "  ReactOS RosBE - Windows Setup" -ForegroundColor Green
     Write-Host "  =============================" -ForegroundColor Green
     Write-Host ""
     Write-Host "  Host: Windows $HostArch"
