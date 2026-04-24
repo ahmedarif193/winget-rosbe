@@ -2,7 +2,7 @@
 
 set -euo pipefail
 
-VERSION="${1:-1.0.0}"
+VERSION="${1:-$(date -u +%Y%m%d)}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(dirname "${SCRIPT_DIR}")"
 DIST_DIR="${ROOT_DIR}/dist"
@@ -136,6 +136,7 @@ run_rosbe() {
     WINEPREFIX="${prefix}" \
     WINEARCH=win64 \
     WINEDEBUG=-all \
+    ROSBE_DISABLE_ATTESTATION=1 \
     ROSBE_RELEASE_REPO="${GOOD_REPO}" \
     ROSBE_RELEASE_API_BASE="${BASE_URL}/api/repos" \
     "${WINE_BIN}" "${BOOTSTRAPPER}" "$@"
@@ -147,6 +148,7 @@ run_bad_rosbe() {
     WINEPREFIX="${prefix}" \
     WINEARCH=win64 \
     WINEDEBUG=-all \
+    ROSBE_DISABLE_ATTESTATION=1 \
     ROSBE_RELEASE_REPO="${BAD_REPO}" \
     ROSBE_RELEASE_API_BASE="${BASE_URL}/api/repos" \
     "${WINE_BIN}" "${BOOTSTRAPPER}" "$@"
@@ -162,7 +164,10 @@ echo "${status_output}"
 grep -F "Installed    : ${VERSION}" <<<"${status_output}" >/dev/null
 grep -F "Layout       : ok" <<<"${status_output}" >/dev/null
 
-run_rosbe "${GOOD_PREFIX}" --no-banner enable
+enable_output="$(run_rosbe "${GOOD_PREFIX}" --no-banner enable)"
+echo "${enable_output}"
+grep -F "Exposed      :" <<<"${enable_output}" >/dev/null
+grep -F "QEMU 11.0.0" <<<"${enable_output}" >/dev/null
 env_output="$(
     WINEPREFIX="${GOOD_PREFIX}" WINEARCH=win64 WINEDEBUG=-all \
     "${WINE_BIN}" reg query 'HKCU\Environment'
@@ -170,6 +175,7 @@ env_output="$(
 echo "${env_output}"
 grep -F "ROSBE_ROOT" <<<"${env_output}" >/dev/null
 grep -F "mingw-gcc\\x86_64-w64-mingw32\\bin" <<<"${env_output}" >/dev/null
+grep -F "qemu-11.0.0" <<<"${env_output}" >/dev/null
 
 run_rosbe "${GOOD_PREFIX}" --no-banner disable
 disabled_status="$(run_rosbe "${GOOD_PREFIX}" --no-banner status)"

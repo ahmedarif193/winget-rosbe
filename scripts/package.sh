@@ -23,7 +23,7 @@ set -- "${args[@]-}"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(dirname "${SCRIPT_DIR}")"
-VERSION="${1:-1.0.0}"
+VERSION="${1:-$(date -u +%Y%m%d)}"
 DIST_DIR="${ROOT_DIR}/dist"
 CACHE_DIR="${DIST_DIR}/cache"
 
@@ -53,6 +53,10 @@ NINJA_LINUX_URL="https://github.com/ninja-build/ninja/releases/download/v${NINJA
 NINJA_WIN_URL="https://github.com/ninja-build/ninja/releases/download/v${NINJA_VERSION}/ninja-win.zip"
 
 WINFLEXBISON_URL="https://github.com/lexxmark/winflexbison/releases/download/v${WINFLEXBISON_VERSION}/win_flex_bison-${WINFLEXBISON_VERSION}.zip"
+QEMU_WIN_NAME="qemu-w64-setup-${QEMU_WIN_BUILD}.exe"
+QEMU_WIN_URL="https://qemu.weilnetz.de/w64/${QEMU_WIN_NAME}"
+QEMU_WIN_SHA512_NAME="${QEMU_WIN_NAME%.exe}.sha512"
+QEMU_WIN_SHA512_URL="https://qemu.weilnetz.de/w64/${QEMU_WIN_SHA512_NAME}"
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 download() {
@@ -77,7 +81,7 @@ download() {
 
 ensure_tools() {
     local missing=()
-    for cmd in curl tar unzip zip sha256sum cargo x86_64-w64-mingw32-gcc; do
+    for cmd in curl tar unzip zip 7z sha256sum sha512sum cargo x86_64-w64-mingw32-gcc; do
         command -v "${cmd}" &>/dev/null || missing+=("${cmd}")
     done
     if [[ ${#missing[@]} -gt 0 ]]; then
@@ -112,6 +116,28 @@ move_extracted_dir() {
 
     chmod -R u+rwX "${dest}" 2>/dev/null || true
     rm -rf "${tmp}"
+}
+
+verify_sha512() {
+    local root="$1" checksum_file="$2"
+    info "Verifying $(basename "${checksum_file}")..."
+    ( cd "${root}" && sha512sum -c --status "$(basename "${checksum_file}")" )
+    ok "Verified $(basename "${checksum_file}")"
+}
+
+write_windows_component_manifest() {
+    local staging="$1"
+    cat > "${staging}/rosbe-components.json" <<EOF
+[
+  { "name": "CMake", "version": "${CMAKE_VERSION}", "path": "cmake-${CMAKE_VERSION}/bin" },
+  { "name": "Ninja", "version": "${NINJA_VERSION}", "path": "ninja-${NINJA_VERSION}" },
+  { "name": "WinFlexBison", "version": "${WINFLEXBISON_VERSION}", "path": "win_flex_bison-${WINFLEXBISON_VERSION}" },
+  { "name": "LLVM-MinGW", "version": "${LLVM_VERSION}", "path": "llvm-mingw/bin" },
+  { "name": "MinGW-GCC (x86_64)", "version": "${GCC_VERSION}", "path": "mingw-gcc/x86_64-w64-mingw32/bin" },
+  { "name": "MinGW-GCC (i686)", "version": "${GCC_VERSION}", "path": "mingw-gcc/i686-w64-mingw32/bin" },
+  { "name": "QEMU", "version": "${QEMU_VERSION}", "path": "qemu-${QEMU_VERSION}" }
+]
+EOF
 }
 
 build_bootstrapper_windows() {
@@ -187,6 +213,7 @@ package_linux() {
 #     win_flex_bison-${WINFLEXBISON_VERSION}/win_flex.exe, win_bison.exe ...
 #     llvm-mingw/bin/clang.exe ...
 #     mingw-gcc/{x86_64,i686}-w64-mingw32/bin/<triple>-gcc.exe ...
+#     qemu-${QEMU_VERSION}/qemu-system-x86_64.exe ...
 package_windows_x64() {
     local pkg="rosbe-${VERSION}-win-x64"
     local staging="${DIST_DIR}/staging/${pkg}"
@@ -242,6 +269,19 @@ package_windows_x64() {
     info "Trimming bundle..."
     trim_bundle "${staging}/mingw-gcc/x86_64-w64-mingw32"
     trim_bundle "${staging}/mingw-gcc/i686-w64-mingw32"
+
+    # QEMU (Windows) -> qemu-<version>/
+    download "${QEMU_WIN_URL}" "${CACHE_DIR}/${QEMU_WIN_NAME}"
+    download "${QEMU_WIN_SHA512_URL}" "${CACHE_DIR}/${QEMU_WIN_SHA512_NAME}"
+    verify_sha512 "${CACHE_DIR}" "${CACHE_DIR}/${QEMU_WIN_SHA512_NAME}"
+    info "Extracting ${QEMU_WIN_NAME}..."
+    local qemu_dir="${staging}/qemu-${QEMU_VERSION}"
+    mkdir -p "${qemu_dir}"
+    7z x -y "${CACHE_DIR}/${QEMU_WIN_NAME}" "-o${qemu_dir}" >/dev/null
+    rm -rf "${qemu_dir}/\$PLUGINSDIR"
+    rm -f "${qemu_dir}/uninst.exe" "${qemu_dir}/uninstall.exe"
+
+    write_windows_component_manifest "${staging}"
 
     info "Zipping ${pkg}..."
     # Zip from INSIDE the staging dir so files are at the zip root (winget

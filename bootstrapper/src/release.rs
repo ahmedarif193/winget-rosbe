@@ -63,8 +63,8 @@ pub fn parse_checksum_file(contents: &str, filename: &str) -> Result<String> {
 
 fn fetch_release(path_suffix: &str) -> Result<ReleaseBundle> {
     let repo = std::env::var("ROSBE_RELEASE_REPO").unwrap_or_else(|_| DEFAULT_RELEASE_REPO.into());
-    let api_base = std::env::var("ROSBE_RELEASE_API_BASE")
-        .unwrap_or_else(|_| DEFAULT_RELEASE_API_BASE.into());
+    let api_base =
+        std::env::var("ROSBE_RELEASE_API_BASE").unwrap_or_else(|_| DEFAULT_RELEASE_API_BASE.into());
     let (owner, name) = repo
         .split_once('/')
         .context("ROSBE_RELEASE_REPO must have the form owner/repo")?;

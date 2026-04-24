@@ -7,14 +7,14 @@
 # click "Compare & pull request" to file the PR yourself in the browser.
 #
 # Usage: ./scripts/manual-submit.sh [version]
-#   defaults to 1.0.0 if no version given.
+#   defaults to today's UTC snapshot version (YYYYMMDD) if no version given.
 #
 # Override checkout location:
 #   WINGET_PKGS_DIR=/some/other/path ./scripts/manual-submit.sh 1.2.0
 
 set -euo pipefail
 
-VERSION="${1:-1.0.0}"
+VERSION="${1:-$(date -u +%Y%m%d)}"
 
 PKG_ID="ReactOS.RosBE"
 LETTER="r"

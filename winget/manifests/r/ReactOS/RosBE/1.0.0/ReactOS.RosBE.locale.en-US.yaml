@@ -25,6 +25,7 @@ Description: |-
     - CMake                      3.31.6
     - Ninja                      1.12.1
     - WinFlexBison (Flex+Bison)  2.5.25    - Flex 2.6.4 + Bison 3.8.2
+    - QEMU (Windows bundle)      11.0.0    - qemu.weilnetz.de build 20260422
 
   `rosbe update` refreshes the toolchain bundle. `rosbe remove` removes
   the installed bundle and PATH entries.

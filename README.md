@@ -7,6 +7,8 @@ A modernized ReactOS Build Environment (RosBE) bootstrapper and toolchain bundle
 > full toolchain bundle on demand. The goal is for this to eventually become the
 > default RosBE used when building upstream ReactOS; for now treat it as an
 > experimental / preview build.
+>
+> Release tags use daily snapshot versions like `v20260424`.
 
 ## Install
 
@@ -29,9 +31,13 @@ The Linux bootstrap installs a fresh toolchain tree under
 
 On Windows, `winget` installs only the `rosbe` bootstrapper. The toolchain ZIP
 is downloaded later by `rosbe install`, verified against the published
-`SHA256SUMS.txt`, then activated locally under `%LOCALAPPDATA%\RosBE`. The
-bootstrapper also provides `rosbe status` to verify the bundle layout and the
-active toolchain paths.
+`SHA256SUMS.txt` and the release's GitHub artifact attestation, then activated
+locally under `%LOCALAPPDATA%\RosBE`. The bootstrapper prints the install root
+plus free space before download, then provides `rosbe status` to verify the
+bundle layout and the active toolchain paths.
+
+Release artifacts also carry GitHub build provenance attestations, so you can
+manually validate them with `gh attestation verify`.
 
 Useful Windows commands:
 
@@ -56,6 +62,7 @@ for CMake, Ninja, Flex, and Bison.
 | CMake | 3.31.6 |
 | Ninja | 1.12.1 |
 | Flex + Bison (winflexbison) | 2.6.4 / 3.8.2 |
+| QEMU (Windows bundle) | 11.0.0 |
 
 Targets: `i686` and `x86_64` (Windows UCRT).
 

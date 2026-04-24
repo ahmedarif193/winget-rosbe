@@ -27,28 +27,24 @@ jobs:
           TAIL="${TAIL%%$'\n'*}"
           TAIL="$(echo "$TAIL" | xargs)"
           FIRST="${TAIL%% *}"
+          TODAY="$(date -u +%Y%m%d)"
 
-          if [[ "$FIRST" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+          if [[ "$FIRST" =~ ^[0-9]{8}$ ]]; then
             VERSION="$FIRST"
             echo "Explicit version requested: $VERSION"
           else
-            LAST_TAG=$(git tag -l 'v[0-9]*' --sort=-v:refname | head -1)
-            if [ -z "$LAST_TAG" ]; then
-              VERSION="1.0.0"
-            else
-              LAST_VER=${LAST_TAG#v}
-              IFS='.' read -r MAJOR MINOR PATCH <<< "$LAST_VER"
-              MINOR=${MINOR:-0}
-              PATCH=${PATCH:-0}
-              VERSION="$MAJOR.$((MINOR + 1)).0"
-            fi
-            echo "Auto-incremented version: $VERSION (last tag: ${LAST_TAG:-none})"
+            VERSION="$TODAY"
+            echo "Using daily snapshot version: $VERSION"
           fi
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
   package:
     needs: gate
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
     env:
       VERSION: ${{ needs.gate.outputs.version }}
     steps:
@@ -87,6 +83,34 @@ jobs:
           chmod +x scripts/verify-bootstrapper-e2e.sh
           ./scripts/verify-bootstrapper-e2e.sh "$VERSION"
 
+      - name: Attest release artifacts
+        uses: actions/attest@v4
+        with:
+          subject-path: |
+            dist/rosbe.exe
+            dist/rosbe-bootstrapper-${{ env.VERSION }}-win-x64.zip
+            dist/rosbe-${{ env.VERSION }}-win-x64.zip
+            dist/SHA256SUMS.txt
+
+      - name: Verify GitHub attestations
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          verify_with_retry() {
+            local artifact="$1"
+            for attempt in 1 2 3 4 5; do
+              if gh attestation verify "$artifact" -R "${{ github.repository }}"; then
+                return 0
+              fi
+              sleep $((attempt * 2))
+            done
+            return 1
+          }
+
+          verify_with_retry dist/rosbe.exe
+          verify_with_retry "dist/rosbe-bootstrapper-${VERSION}-win-x64.zip"
+          verify_with_retry "dist/rosbe-${VERSION}-win-x64.zip"
+
       - name: Materialize winget manifest for this version
         run: |
           set -e
@@ -124,12 +148,19 @@ jobs:
             echo "| CMake | $CMAKE_VERSION |"
             echo "| Ninja | $NINJA_VERSION |"
             echo "| WinFlexBison | $WINFLEXBISON_VERSION |"
+            echo "| QEMU (Windows bundle) | $QEMU_VERSION ($QEMU_WIN_BUILD build from qemu.weilnetz.de) |"
             echo ""
             echo "### Install"
             echo '```'
             echo "winget install ReactOS.RosBE"
             echo "rosbe install"
             echo "rosbe enable"
+            echo '```'
+            echo ""
+            echo "### Provenance"
+            echo "Release artifacts are GitHub-attested and verified in CI."
+            echo '```'
+            echo "gh attestation verify dist/rosbe.exe -R ${{ github.repository }}"
             echo '```'
             echo ""
             echo "### Checksums"

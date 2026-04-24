@@ -1,3 +1,4 @@
+mod attestation;
 mod env_path;
 mod paths;
 mod release;
@@ -11,8 +12,9 @@ use std::process;
 
 use anyhow::{bail, Context, Result};
 use clap::{Parser, Subcommand};
+use fs2::available_space;
 use indicatif::{ProgressBar, ProgressStyle};
-use paths::{InstalledState, RosbePaths};
+use paths::{ComponentSpec, InstalledState, RosbePaths};
 use release::ReleaseBundle;
 use semver::Version;
 use sha2::{Digest, Sha256};
@@ -60,8 +62,8 @@ fn main() -> Result<()> {
     let paths = RosbePaths::detect()?;
     let command = cli.command.unwrap_or(Command::Status);
 
-    let show_banner = !cli.no_banner
-        && matches!(&command, Command::Install { .. } | Command::Update { .. });
+    let show_banner =
+        !cli.no_banner && matches!(&command, Command::Install { .. } | Command::Update { .. });
     maybe_print_banner(show_banner);
 
     match command {
@@ -90,7 +92,8 @@ fn maybe_print_banner(show: bool) {
 | $$  | $$|  $$$$$$/ /$$$$$$$/| $$$$$$$/| $$$$$$$$\n\
 |__/  |__/ \\______/ |_______/ |_______/ |________/\n\
 \n\
-  {APP_NAME} bootstrapper v{}\n",
+  {APP_NAME} bootstrapper v{}\n\
+  ReactOS unofficial build system\n",
         env!("CARGO_PKG_VERSION")
     );
 }
@@ -125,7 +128,9 @@ fn cmd_status(paths: &RosbePaths) -> Result<()> {
                 match compare_versions(&state.version, &bundle.version) {
                     Ordering::Less => println!("Update       : available (`rosbe update`)"),
                     Ordering::Equal => println!("Update       : current"),
-                    Ordering::Greater => println!("Update       : local version is newer than remote latest"),
+                    Ordering::Greater => {
+                        println!("Update       : local version is newer than remote latest")
+                    }
                 }
             } else {
                 println!("Update       : not installed");
@@ -171,7 +176,8 @@ fn cmd_install(paths: &RosbePaths, requested_version: Option<String>, verb: &str
 
     if let Some(current) = previous.as_ref() {
         let current_dir = paths.package_dir(&current.version);
-        if current.version == bundle.version && paths.validate_install_layout(&current_dir).is_ok() {
+        if current.version == bundle.version && paths.validate_install_layout(&current_dir).is_ok()
+        {
             println!("{verb}: RosBE {} is already active.", current.version);
             return Ok(());
         }
@@ -180,6 +186,11 @@ fn cmd_install(paths: &RosbePaths, requested_version: Option<String>, verb: &str
     println!("Release      : {}", bundle.html_url);
     println!("Version      : {}", bundle.version);
     println!("Bundle       : {}", bundle.bundle_name);
+    println!("Install Root : {}", paths.base.display());
+    println!(
+        "Free Space   : {}",
+        format_bytes(available_install_space(paths)?)
+    );
 
     let download_path = paths.cache.join(format!("{}.part", bundle.bundle_name));
     let stage_dir = paths
@@ -233,7 +244,24 @@ fn do_install(
     stage_dir: &Path,
     final_dir: &Path,
 ) -> Result<()> {
-    download_bundle(bundle, download_path)?;
+    let downloaded_bytes = download_bundle(paths, bundle, download_path)?;
+    match attestation::verify_release_artifact(download_path)? {
+        attestation::AttestationStatus::Verified { workflow } => {
+            println!("Attestation  : verified via {workflow}");
+        }
+        attestation::AttestationStatus::Skipped { reason } => {
+            println!("Attestation  : skipped ({reason})");
+        }
+    }
+    let footprint = inspect_archive(download_path)?;
+    let archive_bytes = footprint.compressed_bytes.max(downloaded_bytes);
+    verify_extract_space(paths, archive_bytes, footprint.uncompressed_bytes)?;
+    println!("Archive Size : {}", format_bytes(archive_bytes));
+    println!(
+        "Extract Size : {} across {} files",
+        format_bytes(footprint.uncompressed_bytes),
+        footprint.entries
+    );
     extract_bundle(download_path, stage_dir)?;
     paths.validate_install_layout(stage_dir)?;
 
@@ -267,13 +295,16 @@ fn cmd_enable(paths: &RosbePaths) -> Result<()> {
 
     println!(
         "PATH         : {}",
-        if status.enabled {
-            "enabled"
-        } else {
-            "updated"
-        }
+        if status.enabled { "enabled" } else { "updated" }
     );
-    println!("ROSBE_ROOT   : {}", paths.package_dir(&state.version).display());
+    println!(
+        "ROSBE_ROOT   : {}",
+        paths.package_dir(&state.version).display()
+    );
+    let install_dir = paths.package_dir(&state.version);
+    if let Ok(components) = paths.load_component_specs(&install_dir) {
+        println!("Exposed      : {}", component_summary(&components));
+    }
 
     Ok(())
 }
@@ -305,13 +336,17 @@ fn cmd_remove(paths: &RosbePaths) -> Result<()> {
     Ok(())
 }
 
-fn download_bundle(bundle: &ReleaseBundle, destination: &Path) -> Result<()> {
+fn download_bundle(paths: &RosbePaths, bundle: &ReleaseBundle, destination: &Path) -> Result<u64> {
     let response = release::http_get(&bundle.bundle_url)
         .with_context(|| format!("failed to download {}", bundle.bundle_name))?;
 
     let content_length = response
         .header("Content-Length")
         .and_then(|value| value.parse::<u64>().ok());
+
+    if let Some(content_length) = content_length {
+        verify_download_space(paths, content_length)?;
+    }
 
     let progress = progress_bar(
         content_length,
@@ -355,7 +390,7 @@ fn download_bundle(bundle: &ReleaseBundle, destination: &Path) -> Result<()> {
         );
     }
 
-    Ok(())
+    Ok(content_length.unwrap_or_else(|| fs::metadata(destination).map(|m| m.len()).unwrap_or(0)))
 }
 
 fn extract_bundle(archive_path: &Path, stage_dir: &Path) -> Result<()> {
@@ -374,7 +409,9 @@ fn extract_bundle(archive_path: &Path, stage_dir: &Path) -> Result<()> {
     );
 
     for index in 0..archive.len() {
-        let mut entry = archive.by_index(index).context("failed to read zip entry")?;
+        let mut entry = archive
+            .by_index(index)
+            .context("failed to read zip entry")?;
         let relative = entry
             .enclosed_name()
             .map(PathBuf::from)
@@ -428,6 +465,117 @@ fn progress_bar(total: Option<u64>, message: &str, template: &str) -> Option<Pro
     Some(progress)
 }
 
+#[derive(Debug, Clone, Copy)]
+struct ArchiveFootprint {
+    compressed_bytes: u64,
+    uncompressed_bytes: u64,
+    entries: usize,
+}
+
+fn inspect_archive(archive_path: &Path) -> Result<ArchiveFootprint> {
+    let file = File::open(archive_path)
+        .with_context(|| format!("failed to open {}", archive_path.display()))?;
+    let compressed_bytes = file
+        .metadata()
+        .with_context(|| format!("failed to stat {}", archive_path.display()))?
+        .len();
+    let mut archive = ZipArchive::new(file).context("failed to read zip archive")?;
+    let mut uncompressed_bytes = 0_u64;
+
+    for index in 0..archive.len() {
+        let entry = archive
+            .by_index(index)
+            .context("failed to read zip entry")?;
+        uncompressed_bytes = uncompressed_bytes.saturating_add(entry.size());
+    }
+
+    Ok(ArchiveFootprint {
+        compressed_bytes,
+        uncompressed_bytes,
+        entries: archive.len(),
+    })
+}
+
+fn available_install_space(paths: &RosbePaths) -> Result<u64> {
+    let target = if paths.base.exists() {
+        paths.base.as_path()
+    } else {
+        paths
+            .base
+            .parent()
+            .filter(|parent| parent.exists())
+            .unwrap_or_else(|| Path::new("."))
+    };
+
+    available_space(target)
+        .with_context(|| format!("failed to query free space for {}", target.display()))
+}
+
+fn verify_download_space(paths: &RosbePaths, compressed_bytes: u64) -> Result<()> {
+    const HEADROOM_BYTES: u64 = 256 * 1024 * 1024;
+    let free_bytes = available_install_space(paths)?;
+    let required = compressed_bytes.saturating_add(HEADROOM_BYTES);
+
+    if free_bytes < required {
+        bail!(
+            "not enough free space under {}: need at least {} free to download RosBE, found {}",
+            paths.base.display(),
+            format_bytes(required),
+            format_bytes(free_bytes)
+        );
+    }
+
+    Ok(())
+}
+
+fn verify_extract_space(
+    paths: &RosbePaths,
+    compressed_bytes: u64,
+    uncompressed_bytes: u64,
+) -> Result<()> {
+    const HEADROOM_BYTES: u64 = 256 * 1024 * 1024;
+    let free_bytes = available_install_space(paths)?;
+    let required = compressed_bytes
+        .saturating_add(uncompressed_bytes)
+        .saturating_add(HEADROOM_BYTES);
+
+    if free_bytes < required {
+        bail!(
+            "not enough free space under {}: need at least {} free to keep the archive and extract RosBE, found {}",
+            paths.base.display(),
+            format_bytes(required),
+            format_bytes(free_bytes)
+        );
+    }
+
+    Ok(())
+}
+
+fn component_summary(components: &[ComponentSpec]) -> String {
+    components
+        .iter()
+        .map(|component| format!("{} {}", component.name, component.version))
+        .collect::<Vec<_>>()
+        .join(", ")
+}
+
+fn format_bytes(bytes: u64) -> String {
+    const UNITS: [&str; 5] = ["B", "KiB", "MiB", "GiB", "TiB"];
+    let mut value = bytes as f64;
+    let mut unit = 0_usize;
+
+    while value >= 1024.0 && unit < UNITS.len() - 1 {
+        value /= 1024.0;
+        unit += 1;
+    }
+
+    if unit == 0 {
+        format!("{} {}", bytes, UNITS[unit])
+    } else {
+        format!("{value:.1} {}", UNITS[unit])
+    }
+}
+
 fn compare_versions(local: &str, remote: &str) -> Ordering {
     match (Version::parse(local), Version::parse(remote)) {
         (Ok(local), Ok(remote)) => local.cmp(&remote),
@@ -441,8 +589,7 @@ fn cleanup_path(path: &Path) -> Result<()> {
     }
 
     if path.is_dir() {
-        fs::remove_dir_all(path)
-            .with_context(|| format!("failed to remove {}", path.display()))?;
+        fs::remove_dir_all(path).with_context(|| format!("failed to remove {}", path.display()))?;
     } else {
         fs::remove_file(path).with_context(|| format!("failed to remove {}", path.display()))?;
     }

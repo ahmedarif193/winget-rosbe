@@ -113,6 +113,7 @@ Managed toolchain versions:
 - CMake: \`${CMAKE_VERSION}\`
 - Ninja: \`${NINJA_VERSION}\`
 - WinFlexBison: \`${WINFLEXBISON_VERSION}\`
+- QEMU (Windows bundle): \`${QEMU_VERSION}\` (${QEMU_WIN_BUILD} build from qemu.weilnetz.de)
 
 - [x] Signed the Microsoft CLA
 - [x] Only modifies one manifest

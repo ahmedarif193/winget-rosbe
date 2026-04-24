@@ -5,6 +5,8 @@ use anyhow::{Context, Result};
 use directories::BaseDirs;
 use serde::{Deserialize, Serialize};
 
+const COMPONENT_MANIFEST_NAME: &str = "rosbe-components.json";
+
 #[derive(Debug, Clone)]
 pub struct RosbePaths {
     pub base: PathBuf,
@@ -20,6 +22,13 @@ pub struct InstalledState {
     pub bundle_name: String,
     pub bundle_sha256: String,
     pub release_url: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct ComponentSpec {
+    pub name: String,
+    pub version: String,
+    pub path: String,
 }
 
 impl RosbePaths {
@@ -86,19 +95,39 @@ impl RosbePaths {
             }
         }
 
-        self.toolchain_path_entries(install_dir)?;
+        let components = self.load_component_specs(install_dir)?;
+        for component in &components {
+            let component_path = resolve_component_path(install_dir, &component.path);
+            if !component_path.exists() {
+                anyhow::bail!("missing component path {}", component_path.display());
+            }
+        }
+
+        if let Some(qemu_dir) = components
+            .iter()
+            .find(|component| component.name == "QEMU")
+            .map(|component| resolve_component_path(install_dir, &component.path))
+        {
+            let qemu_probe = qemu_dir.join("qemu-system-x86_64.exe");
+            if !qemu_probe.exists() {
+                anyhow::bail!("missing required file {}", qemu_probe.display());
+            }
+        } else if let Ok(qemu_dir) = find_prefixed_dir(install_dir, "qemu-") {
+            let qemu_probe = qemu_dir.join("qemu-system-x86_64.exe");
+            if !qemu_probe.exists() {
+                anyhow::bail!("missing required file {}", qemu_probe.display());
+            }
+        }
+
         Ok(())
     }
 
     pub fn toolchain_path_entries(&self, install_dir: &Path) -> Result<Vec<PathBuf>> {
-        let cmake_dir = find_prefixed_dir(install_dir, "cmake-")?.join("bin");
-        let ninja_dir = find_prefixed_dir(install_dir, "ninja-")?;
-        let flex_dir = find_prefixed_dir(install_dir, "win_flex_bison-")?;
-        let llvm_dir = install_dir.join("llvm-mingw").join("bin");
-        let gcc_x64 = install_dir.join("mingw-gcc").join("x86_64-w64-mingw32").join("bin");
-        let gcc_x86 = install_dir.join("mingw-gcc").join("i686-w64-mingw32").join("bin");
-
-        let entries = vec![cmake_dir, ninja_dir, flex_dir, llvm_dir, gcc_x64, gcc_x86];
+        let entries = self
+            .load_component_specs(install_dir)?
+            .into_iter()
+            .map(|component| resolve_component_path(install_dir, &component.path))
+            .collect::<Vec<_>>();
         for entry in &entries {
             if !entry.exists() {
                 anyhow::bail!("missing toolchain directory {}", entry.display());
@@ -106,6 +135,71 @@ impl RosbePaths {
         }
 
         Ok(entries)
+    }
+
+    pub fn load_component_specs(&self, install_dir: &Path) -> Result<Vec<ComponentSpec>> {
+        let manifest_path = install_dir.join(COMPONENT_MANIFEST_NAME);
+        if manifest_path.exists() {
+            let content = fs::read_to_string(&manifest_path)
+                .with_context(|| format!("failed to read {}", manifest_path.display()))?;
+            let components: Vec<ComponentSpec> =
+                serde_json::from_str(&content).context("failed to parse rosbe-components.json")?;
+            if components.is_empty() {
+                anyhow::bail!("rosbe-components.json did not contain any components");
+            }
+            return Ok(components);
+        }
+
+        self.legacy_component_specs(install_dir)
+    }
+
+    fn legacy_component_specs(&self, install_dir: &Path) -> Result<Vec<ComponentSpec>> {
+        let cmake_dir = find_prefixed_dir(install_dir, "cmake-")?;
+        let ninja_dir = find_prefixed_dir(install_dir, "ninja-")?;
+        let flex_dir = find_prefixed_dir(install_dir, "win_flex_bison-")?;
+
+        let mut components = vec![
+            ComponentSpec {
+                name: String::from("CMake"),
+                version: version_from_dir_name(&cmake_dir, "cmake-"),
+                path: normalize_relative_path(cmake_dir.join("bin"), install_dir),
+            },
+            ComponentSpec {
+                name: String::from("Ninja"),
+                version: version_from_dir_name(&ninja_dir, "ninja-"),
+                path: normalize_relative_path(ninja_dir, install_dir),
+            },
+            ComponentSpec {
+                name: String::from("WinFlexBison"),
+                version: version_from_dir_name(&flex_dir, "win_flex_bison-"),
+                path: normalize_relative_path(flex_dir, install_dir),
+            },
+            ComponentSpec {
+                name: String::from("LLVM-MinGW"),
+                version: String::from("unknown"),
+                path: String::from("llvm-mingw/bin"),
+            },
+            ComponentSpec {
+                name: String::from("MinGW-GCC (x86_64)"),
+                version: String::from("unknown"),
+                path: String::from("mingw-gcc/x86_64-w64-mingw32/bin"),
+            },
+            ComponentSpec {
+                name: String::from("MinGW-GCC (i686)"),
+                version: String::from("unknown"),
+                path: String::from("mingw-gcc/i686-w64-mingw32/bin"),
+            },
+        ];
+
+        if let Ok(qemu_dir) = find_prefixed_dir(install_dir, "qemu-") {
+            components.push(ComponentSpec {
+                name: String::from("QEMU"),
+                version: version_from_dir_name(&qemu_dir, "qemu-"),
+                path: normalize_relative_path(qemu_dir, install_dir),
+            });
+        }
+
+        Ok(components)
     }
 }
 
@@ -135,8 +229,26 @@ pub fn is_managed_entry(base_dir: &Path, entry: &str) -> bool {
     candidate == base || candidate.starts_with(&(base + "\\"))
 }
 
+fn normalize_relative_path(path: PathBuf, root: &Path) -> String {
+    path.strip_prefix(root)
+        .unwrap_or(&path)
+        .to_string_lossy()
+        .replace('\\', "/")
+}
+
+fn resolve_component_path(root: &Path, relative: &str) -> PathBuf {
+    let mut path = root.to_path_buf();
+    for segment in relative.split(['/', '\\']) {
+        if !segment.is_empty() {
+            path.push(segment);
+        }
+    }
+    path
+}
+
 fn find_prefixed_dir(root: &Path, prefix: &str) -> Result<PathBuf> {
-    let entries = fs::read_dir(root).with_context(|| format!("failed to read {}", root.display()))?;
+    let entries =
+        fs::read_dir(root).with_context(|| format!("failed to read {}", root.display()))?;
     for entry in entries {
         let entry = entry.with_context(|| format!("failed to inspect {}", root.display()))?;
         if entry.file_type()?.is_dir() {
@@ -147,7 +259,17 @@ fn find_prefixed_dir(root: &Path, prefix: &str) -> Result<PathBuf> {
         }
     }
 
-    anyhow::bail!("missing directory with prefix `{prefix}` under {}", root.display())
+    anyhow::bail!(
+        "missing directory with prefix `{prefix}` under {}",
+        root.display()
+    )
+}
+
+fn version_from_dir_name(path: &Path, prefix: &str) -> String {
+    path.file_name()
+        .map(|name| name.to_string_lossy())
+        .and_then(|name| name.strip_prefix(prefix).map(str::to_owned))
+        .unwrap_or_else(|| String::from("unknown"))
 }
 
 #[cfg(test)]
@@ -177,6 +299,9 @@ mod tests {
             base,
             r"C:\Users\test\AppData\Local\RosBE\pkgs\1.0.0\bin"
         ));
-        assert!(!is_managed_entry(base, r"C:\Users\test\AppData\Local\Other"));
+        assert!(!is_managed_entry(
+            base,
+            r"C:\Users\test\AppData\Local\Other"
+        ));
     }
 }
