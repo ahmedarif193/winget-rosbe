@@ -1,14 +1,13 @@
-# winget-rosbe
+# ReactOS RosBE
 
-A modernized ReactOS Build Environment (RosBE) bootstrapper and toolchain bundle.
+[![Validation](https://github.com/ahmedarif193/winget-rosbe/actions/workflows/validate.yml/badge.svg?branch=main)](https://github.com/ahmedarif193/winget-rosbe/actions/workflows/validate.yml)
+[![Publish](https://github.com/ahmedarif193/winget-rosbe/actions/workflows/release.yml/badge.svg?branch=main)](https://github.com/ahmedarif193/winget-rosbe/actions/workflows/release.yml)
 
-> **Not an official RosBE release.** On Windows, `winget` installs a small Rust
-> bootstrapper (`rosbe.exe`). That bootstrapper later downloads and verifies the
-> full toolchain bundle on demand. The goal is for this to eventually become the
-> default RosBE used when building upstream ReactOS; for now treat it as an
-> experimental / preview build.
->
-> Release tags use daily snapshot versions like `v20260424`.
+Unofficial ReactOS build environment for Windows and Linux.
+
+- Windows: `winget` installs the small `rosbe` bootstrapper, then `rosbe install` downloads and verifies the toolchain bundle.
+- Linux: the bootstrap script installs the toolchain tree under `~/.local/opt/rosbe`.
+- Release tags use daily snapshot versions like `v20260424`.
 
 ## Install
 
@@ -29,15 +28,9 @@ wget -qO- https://raw.githubusercontent.com/ahmedarif193/winget-rosbe/main/rosbe
 The Linux bootstrap installs a fresh toolchain tree under
 `~/.local/opt/rosbe` and replaces any previous tree at that path.
 
-On Windows, `winget` installs only the `rosbe` bootstrapper. The toolchain ZIP
-is downloaded later by `rosbe install`, verified against the published
-`SHA256SUMS.txt` and the release's GitHub artifact attestation, then activated
-locally under `%LOCALAPPDATA%\RosBE`. The bootstrapper prints the install root
-plus free space before download, then provides `rosbe status` to verify the
-bundle layout and the active toolchain paths.
-
-Release artifacts also carry GitHub build provenance attestations, so you can
-manually validate them with `gh attestation verify`.
+On Windows, `rosbe install` verifies the downloaded bundle against
+`SHA256SUMS.txt` and the release's GitHub artifact attestation before
+activating it under `%LOCALAPPDATA%\RosBE`.
 
 Useful Windows commands:
 

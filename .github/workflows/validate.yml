@@ -1,0 +1,28 @@
+name: Validation
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Validate shell scripts
+        run: |
+          bash -n rosbe-linux-bootstrap.sh
+          bash -n scripts/manual-submit.sh
+          bash -n scripts/package.sh
+          bash -n scripts/publish-winget.sh
+          bash -n scripts/verify-bootstrapper-e2e.sh
+
+      - name: Test bootstrapper
+        run: cargo test --manifest-path bootstrapper/Cargo.toml --locked
