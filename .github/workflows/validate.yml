@@ -18,7 +18,9 @@ jobs:
 
       - name: Validate shell scripts
         run: |
-          bash -n rosbe-linux-bootstrap.sh
+          # rosbe-unix-bootstrap.sh targets /bin/sh — check it as POSIX sh too.
+          sh -n rosbe-unix-bootstrap.sh
+          bash -n rosbe-unix-bootstrap.sh
           bash -n scripts/manual-submit.sh
           bash -n scripts/package.sh
           bash -n scripts/publish-winget.sh

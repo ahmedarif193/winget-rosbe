@@ -1,11 +1,20 @@
 #!/bin/sh
-# ReactOS RosBE - Linux bootstrap installer
+# ReactOS RosBE - Unix bootstrap installer (Linux and macOS)
 #
 # Intended use:
-#   wget -qO- https://raw.githubusercontent.com/ahmedarif193/winget-rosbe/main/rosbe-linux-bootstrap.sh | sh
+#   wget -qO- https://raw.githubusercontent.com/ahmedarif193/winget-rosbe/main/rosbe-unix-bootstrap.sh | sh
+#   curl -fsSL https://raw.githubusercontent.com/ahmedarif193/winget-rosbe/main/rosbe-unix-bootstrap.sh | sh
 #
-# Installs a fresh toolchain tree under:
+# Auto-detects the host OS (Linux or macOS) and architecture, then installs a
+# fresh toolchain tree under:
 #   ~/.local/opt/rosbe
+#
+# Linux  : LLVM-MinGW (host build for the detected arch) + ct-ng MinGW-GCC
+#          for i686 and x86_64 Windows targets.
+# macOS  : LLVM-MinGW universal binary (covers both Intel and Apple Silicon).
+#          The ct-ng MinGW-GCC bundle has no macOS host build upstream; if you
+#          need GCC on macOS, `brew install mingw-w64` is the easiest option
+#          (separate version, MSVCRT default).
 #
 # The installer always removes the old tree first and downloads fresh archives.
 
@@ -30,6 +39,7 @@ NC="$(printf '\033[0m')"
 
 info() { printf '%s[INFO]%s %s\n' "${CYAN}" "${NC}" "$*"; }
 ok()   { printf '%s[  OK]%s %s\n' "${GREEN}" "${NC}" "$*"; }
+warn() { printf '%s[WARN]%s %s\n' "${RED}" "${NC}" "$*" >&2; }
 fail() { printf '%s[FAIL]%s %s\n' "${RED}" "${NC}" "$*" >&2; exit 1; }
 
 cleanup() {
@@ -41,8 +51,8 @@ trap cleanup EXIT
 trap 'cleanup; exit 130' INT TERM
 
 banner() {
-    printf '%s\n' "${GREEN}ReactOS RosBE - Linux Bootstrap${NC}"
-    printf '%s\n\n' "${GREEN}================================${NC}"
+    printf '%s\n' "${GREEN}ReactOS RosBE - Unix Bootstrap${NC}"
+    printf '%s\n\n' "${GREEN}===============================${NC}"
     printf 'Install root: %s\n' "${INSTALL_ROOT}"
     printf 'Toolchains:   LLVM-MinGW %s, MinGW-GCC %s\n\n' "${LLVM_VERSION}" "${GCC_VERSION}"
 }
@@ -51,17 +61,31 @@ detect_host() {
     os="$(uname -s)"
     arch="$(uname -m)"
 
-    if [ "${os}" != "Linux" ]; then
-        fail "This installer is for Linux. Detected: ${os}"
-    fi
-
-    case "${arch}" in
-        x86_64)  HOST_PLATFORM="ubuntu-22.04-x86_64" ;;
-        aarch64) HOST_PLATFORM="ubuntu-22.04-aarch64" ;;
-        *)       fail "Unsupported Linux architecture: ${arch}" ;;
+    case "${os}" in
+        Linux)
+            HOST_OS="linux"
+            case "${arch}" in
+                x86_64)  LLVM_HOST_PLATFORM="ubuntu-22.04-x86_64" ;;
+                aarch64) LLVM_HOST_PLATFORM="ubuntu-22.04-aarch64" ;;
+                *)       fail "Unsupported Linux architecture: ${arch}" ;;
+            esac
+            ;;
+        Darwin)
+            HOST_OS="macos"
+            # LLVM-MinGW ships a single universal Mach-O for macOS that runs
+            # natively on both Intel (x86_64) and Apple Silicon (arm64). No
+            # per-arch detection or Rosetta dance needed.
+            case "${arch}" in
+                x86_64|arm64|aarch64) LLVM_HOST_PLATFORM="macos-universal" ;;
+                *) fail "Unsupported macOS architecture: ${arch}" ;;
+            esac
+            ;;
+        *)
+            fail "Unsupported operating system: ${os}. This installer supports Linux and macOS."
+            ;;
     esac
 
-    info "Host: ${os} ${arch} (${HOST_PLATFORM})"
+    info "Host: ${os} ${arch} (LLVM platform: ${LLVM_HOST_PLATFORM})"
 }
 
 require_tools() {
@@ -105,7 +129,7 @@ download() {
     if command -v curl >/dev/null 2>&1; then
         curl -fL \
             --connect-timeout 30 \
-            --max-time 300 \
+            --max-time 600 \
             --speed-limit 10240 --speed-time 60 \
             --retry 3 --retry-delay 5 \
             -o "${dest}" "${url}" || fail "Download failed: ${url}"
@@ -117,7 +141,7 @@ download() {
 }
 
 install_llvm_mingw() {
-    filename="llvm-mingw-${LLVM_VERSION}-${LLVM_TRIPLET}-${HOST_PLATFORM}.tar.xz"
+    filename="llvm-mingw-${LLVM_VERSION}-${LLVM_TRIPLET}-${LLVM_HOST_PLATFORM}.tar.xz"
     archive="${TMP_DIR}/${filename}"
     target="${INSTALL_ROOT}/llvm-mingw"
 
@@ -156,8 +180,24 @@ install_mingw_gcc_arch() {
 }
 
 install_mingw_gcc() {
+    if [ "${HOST_OS}" = "macos" ]; then
+        info "Skipping MinGW-GCC: no macOS host build available upstream."
+        info "Install via Homebrew if needed: brew install mingw-w64 (separate version, MSVCRT default)."
+        return 0
+    fi
     install_mingw_gcc_arch "i686-w64-mingw32" "tar.gz" "i686-w64-mingw32" "i686-w64-mingw32-gcc"
     install_mingw_gcc_arch "x86_64-w64-mingw32" "tar.gz" "x86_64-w64-mingw32" "x86_64-w64-mingw32-gcc"
+}
+
+# Defensive: clear com.apple.quarantine after extraction. curl/wget do not set
+# this xattr (so the curl-pipe-to-sh flow never needs it), but tar propagates
+# quarantine from inside-archive xattrs and from archives downloaded via
+# Safari/Chrome — covers the offline-install case at zero cost. Idempotent.
+strip_macos_quarantine() {
+    [ "${HOST_OS}" = "macos" ] || return 0
+    command -v xattr >/dev/null 2>&1 || return 0
+    info "Clearing com.apple.quarantine (defensive)..."
+    xattr -dr com.apple.quarantine "${INSTALL_ROOT}" 2>/dev/null || true
 }
 
 write_env_file() {
@@ -210,7 +250,14 @@ print_summary() {
     printf 'Or source it in the current shell:\n'
     printf '  . "%s/rosbe-env.sh"\n\n' "${INSTALL_ROOT}"
     printf 'If %s is not in PATH, add this to your shell profile:\n' "${BIN_DIR}"
-    printf '  export PATH="%s:$PATH"\n\n' "${BIN_DIR}"
+    # $PATH is intentionally literal — the user copy-pastes this into their shell profile.
+    # shellcheck disable=SC2016
+    printf '  export PATH="%s:$PATH"\n' "${BIN_DIR}"
+    if [ "${HOST_OS}" = "macos" ]; then
+        printf '\nNote (macOS): only LLVM-MinGW (Clang/lld) is bundled.\n'
+        printf 'For GCC: brew install mingw-w64 (MSVCRT default; not version-matched).\n'
+    fi
+    printf '\n'
 }
 
 main() {
@@ -225,6 +272,7 @@ main() {
     safe_remove_install_root
     install_llvm_mingw
     install_mingw_gcc
+    strip_macos_quarantine
     write_env_file
     write_shell_entrypoint
     print_summary

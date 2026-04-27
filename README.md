@@ -3,10 +3,10 @@
 [![Validation](https://github.com/ahmedarif193/winget-rosbe/actions/workflows/validate.yml/badge.svg?branch=main)](https://github.com/ahmedarif193/winget-rosbe/actions/workflows/validate.yml)
 [![Publish](https://github.com/ahmedarif193/winget-rosbe/actions/workflows/release.yml/badge.svg?branch=main)](https://github.com/ahmedarif193/winget-rosbe/actions/workflows/release.yml)
 
-Unofficial ReactOS build environment for Windows and Linux.
+Unofficial ReactOS build environment for Windows, Linux, and macOS.
 
 - Windows: `winget` installs the small `rosbe` bootstrapper, then `rosbe install` downloads and verifies the toolchain bundle.
-- Linux: the bootstrap script installs the toolchain tree under `~/.local/opt/rosbe`.
+- Linux / macOS: a single bootstrap script auto-detects the host OS and architecture and installs the toolchain tree under `~/.local/opt/rosbe`.
 - Release tags use daily snapshot versions like `v20260424`.
 
 ## Install
@@ -19,14 +19,21 @@ rosbe install
 rosbe enable
 ```
 
-Linux:
+Linux or macOS:
 
 ```bash
-wget -qO- https://raw.githubusercontent.com/ahmedarif193/winget-rosbe/main/rosbe-linux-bootstrap.sh | sh
+curl -fsSL https://raw.githubusercontent.com/ahmedarif193/winget-rosbe/main/rosbe-unix-bootstrap.sh | sh
 ```
 
-The Linux bootstrap installs a fresh toolchain tree under
-`~/.local/opt/rosbe` and replaces any previous tree at that path.
+The bootstrap detects:
+
+- **Linux x86_64 / aarch64** — installs LLVM-MinGW plus the ct-ng MinGW-GCC toolchains for `i686` and `x86_64` Windows targets.
+- **macOS Intel / Apple Silicon** — installs the LLVM-MinGW universal binary (Clang + lld + libc++). The ct-ng GCC bundle has no upstream macOS host build; if you need GCC, run `brew install mingw-w64` (separate version, MSVCRT default).
+
+The script always replaces any previous tree at `~/.local/opt/rosbe` with a
+fresh toolchain. On macOS, `com.apple.quarantine` is cleared after extraction
+as a defensive measure for offline (Safari-downloaded) installs — the typical
+`curl | sh` flow doesn't set the xattr in the first place.
 
 On Windows, `rosbe install` verifies the downloaded bundle against
 `SHA256SUMS.txt` and the release's GitHub artifact attestation before
@@ -41,9 +48,9 @@ rosbe disable
 rosbe remove
 ```
 
-On Linux, run `~/.local/bin/rosbe-shell` or source
+On Linux and macOS, run `~/.local/bin/rosbe-shell` or source
 `~/.local/opt/rosbe/rosbe-env.sh` before configuring ReactOS.
-The Linux bootstrap installs only the toolchains; use your distro packages
+The bootstrap installs only the toolchains; use your distro/Homebrew packages
 for CMake, Ninja, Flex, and Bison.
 
 ## What you get
