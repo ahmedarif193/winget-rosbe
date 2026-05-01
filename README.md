@@ -19,7 +19,23 @@ rosbe install
 rosbe enable
 ```
 
-Linux or macOS:
+Linux (Docker variant):
+
+Requires `podman` or `docker` on the host.
+
+```bash
+sudo apt install -y podman          # Debian / Ubuntu
+sudo pacman -S --needed podman      # Arch / Manjaro
+sudo dnf install -y podman          # Fedora / RHEL
+
+wget -qO- https://raw.githubusercontent.com/ahmedarif193/winget-rosbe/main/rosbe-linux-docker-bootstrap.sh | sh
+rosbe enable
+```
+
+The Docker bootstrap wires `~/.bashrc` / `~/.zshrc` so new terminals get the
+`rosbe` command; `exec $SHELL` reloads the current terminal.
+
+Linux or macOS (host install):
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/ahmedarif193/winget-rosbe/main/rosbe-unix-bootstrap.sh | sh
@@ -48,9 +64,18 @@ rosbe disable
 rosbe remove
 ```
 
-On Linux and macOS, run `~/.local/bin/rosbe-shell` or source
-`~/.local/opt/rosbe/rosbe-env.sh` before configuring ReactOS.
-The bootstrap installs only the toolchains; use your distro/Homebrew packages
+Useful Linux Docker commands:
+
+```bash
+rosbe enable
+rosbe status
+rosbe update
+rosbe disable
+```
+
+For the Linux / macOS host install, run `~/.local/bin/rosbe-shell` or source
+`~/.local/opt/rosbe/rosbe-env.sh` before configuring ReactOS. The host
+bootstrap installs only the toolchains; use your distro / Homebrew packages
 for CMake, Ninja, Flex, and Bison.
 
 ## What you get

@@ -25,8 +25,8 @@ LLVM_TRIPLET=ucrt
 GCC_VERSION=15.2.0
 GCC_TAG=v15.2
 
-INSTALL_ROOT="${HOME}/.local/opt/rosbe"
-BIN_DIR="${HOME}/.local/bin"
+INSTALL_ROOT="${INSTALL_ROOT:-${HOME}/.local/opt/rosbe}"
+BIN_DIR="${BIN_DIR:-${HOME}/.local/bin}"
 TMP_DIR=""
 
 LLVM_BASE_URL="https://github.com/mstorsjo/llvm-mingw/releases/download/${LLVM_VERSION}"
