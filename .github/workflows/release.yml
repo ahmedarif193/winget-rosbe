@@ -114,8 +114,8 @@ jobs:
       - name: Materialize winget manifest for this version
         run: |
           set -e
-          SRC=winget/manifests/r/ReactOS/RosBE/1.0.0
-          DST=winget/manifests/r/ReactOS/RosBE/$VERSION
+          SRC=winget/manifests/a/AhmedArif/RosBE/1.0.0
+          DST=winget/manifests/a/AhmedArif/RosBE/$VERSION
           if [ ! -d "$DST" ]; then
             mkdir -p "$DST"
             for f in "$SRC"/*.yaml; do
@@ -129,7 +129,7 @@ jobs:
           ASSET="rosbe-bootstrapper-$VERSION-win-x64.zip"
           HASH=$(awk -v asset="$ASSET" '$2==asset {print toupper($1)}' dist/SHA256SUMS.txt)
           sed -i "s|InstallerSha256:.*|InstallerSha256: $HASH|" \
-              "$DST/ReactOS.RosBE.installer.yaml"
+              "$DST/AhmedArif.RosBE.installer.yaml"
 
       - name: Compose release body
         id: body
@@ -138,7 +138,7 @@ jobs:
           source scripts/versions.env
           {
             echo "body<<RELEASEBODYEOF"
-            echo "## ReactOS RosBE v$VERSION"
+            echo "## RosBE v$VERSION"
             echo ""
             echo "### Managed toolchain versions"
             echo "| Component | Version |"
@@ -152,7 +152,7 @@ jobs:
             echo ""
             echo "### Install"
             echo '```'
-            echo "winget install ReactOS.RosBE"
+            echo "winget install AhmedArif.RosBE"
             echo "rosbe install"
             echo "rosbe enable"
             echo '```'
@@ -174,7 +174,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v${{ needs.gate.outputs.version }}
-          name: ReactOS RosBE v${{ needs.gate.outputs.version }}
+          name: RosBE v${{ needs.gate.outputs.version }}
           body: ${{ steps.body.outputs.body }}
           files: |
             dist/*.tar.xz
@@ -187,7 +187,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: winget-manifests
-          path: winget/manifests/r/ReactOS/RosBE/${{ needs.gate.outputs.version }}/
+          path: winget/manifests/a/AhmedArif/RosBE/${{ needs.gate.outputs.version }}/
 
   publish-winget:
     needs: [gate, package]
@@ -201,7 +201,7 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           name: winget-manifests
-          path: winget/manifests/r/ReactOS/RosBE/${{ needs.gate.outputs.version }}/
+          path: winget/manifests/a/AhmedArif/RosBE/${{ needs.gate.outputs.version }}/
 
       - name: Install deps
         run: sudo apt-get install -y -qq uuid-runtime

@@ -24,7 +24,7 @@ set "ROSBE_GCC_X64=!ROSBE_ROOT!\mingw-gcc\x86_64-w64-mingw32"
 set "ROSBE_GCC_X86=!ROSBE_ROOT!\mingw-gcc\i686-w64-mingw32"
 
 echo.
-echo   ReactOS RosBE - ReactOS Build Environment
+echo   RosBE - Rust Open-Source Build Environment
 echo   ==========================================
 echo.
 echo   Root: !ROSBE_ROOT!
@@ -55,7 +55,7 @@ if defined ROSBE_FLEX_BISON (
 )
 
 echo.
-echo   ReactOS's configure.cmd / cmake can consume this tree directly.
+echo   Your project's configure.cmd / cmake can consume this tree directly.
 echo   Suggested GCC toolchain file:
 echo     !ROSBE_GCC_X64!\toolchain.cmake
 echo.

@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
-# Open a PR to microsoft/winget-pkgs for ReactOS.RosBE <version>.
+# Open a PR to microsoft/winget-pkgs for AhmedArif.RosBE <version>.
 #
 # Usage: GH_TOKEN=<PAT> ./scripts/publish-winget.sh <version>
 #
 # Prerequisites:
 #   - GitHub release v<version> already exists on ahmedarif193/winget-rosbe
 #     with the bootstrapper ZIP, toolchain ZIP, and SHA256SUMS.txt attached.
-#   - Local manifests at winget/manifests/r/ReactOS/RosBE/<version>/*.yaml
+#   - Local manifests at winget/manifests/a/AhmedArif/RosBE/<version>/*.yaml
 #     with InstallerUrl and InstallerSha256 already correct.
 #   - GH_TOKEN is a PAT (classic public_repo, or fine-grained with:
 #     Contents R/W on the fork, Pull requests R/W on microsoft/winget-pkgs,
@@ -17,14 +17,14 @@ set -euo pipefail
 VERSION="${1:?Usage: $0 <version>}"
 : "${GH_TOKEN:?GH_TOKEN must be set}"
 
-PKG_ID="ReactOS.RosBE"
-LETTER="r"
+PKG_ID="AhmedArif.RosBE"
+LETTER="a"
 UPSTREAM="microsoft/winget-pkgs"
 RELEASE_REPO="ahmedarif193/winget-rosbe"
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-SRC_DIR="${ROOT_DIR}/winget/manifests/${LETTER}/ReactOS/RosBE/${VERSION}"
+SRC_DIR="${ROOT_DIR}/winget/manifests/${LETTER}/AhmedArif/RosBE/${VERSION}"
 COMMIT_EMAIL="actions@github.com"
-COMMIT_NAME="ReactOS RosBE Bot"
+COMMIT_NAME="RosBE Bot"
 
 [[ -d "$SRC_DIR" ]] || { echo "ERROR: no manifests at $SRC_DIR"; exit 1; }
 for f in "${PKG_ID}.yaml" "${PKG_ID}.installer.yaml" "${PKG_ID}.locale.en-US.yaml"; do
@@ -38,7 +38,7 @@ FORK="${FORK_USER}/winget-pkgs"
 UUID="$(uuidgen | tr -d - | tr 'a-f' 'A-F')"
 BRANCH="${PKG_ID}-${VERSION}-${UUID}"
 PR_TITLE="New version: ${PKG_ID} version ${VERSION}"
-MANIFEST_PATH="manifests/${LETTER}/ReactOS/RosBE/${VERSION}"
+MANIFEST_PATH="manifests/${LETTER}/AhmedArif/RosBE/${VERSION}"
 BOOTSTRAPPER_ASSET="rosbe-bootstrapper-${VERSION}-win-x64.zip"
 
 EXISTING_PR="$(gh pr list --repo "$UPSTREAM" \
@@ -75,7 +75,7 @@ echo "Preparing workspace (fetching upstream master HEAD)..."
 git -C "$TMP" init --quiet
 git -C "$TMP" config core.sparseCheckout true
 git -C "$TMP" sparse-checkout init --cone
-git -C "$TMP" sparse-checkout set "manifests/${LETTER}/ReactOS/RosBE"
+git -C "$TMP" sparse-checkout set "manifests/${LETTER}/AhmedArif/RosBE"
 git -C "$TMP" config user.email "$COMMIT_EMAIL"
 git -C "$TMP" config user.name  "$COMMIT_NAME"
 git -C "$TMP" remote add origin   "https://${FORK_USER}:${GH_TOKEN}@github.com/${FORK}.git"
@@ -99,7 +99,7 @@ X64_HASH="$(echo "$HASHES" | awk -v asset="$BOOTSTRAPPER_ASSET" '$2==asset {prin
 source "${ROOT_DIR}/scripts/versions.env"
 BODY_FILE="$TMP/pr-body.md"
 cat > "$BODY_FILE" <<EOF
-### Update from [ReactOS RosBE](https://github.com/${RELEASE_REPO}) :rocket:
+### Update from [RosBE](https://github.com/${RELEASE_REPO}) :rocket:
 
 - **Package**: \`${PKG_ID}\`
 - **Version**: \`${VERSION}\`

@@ -93,7 +93,7 @@ fn maybe_print_banner(show: bool) {
 |__/  |__/ \\______/ |_______/ |_______/ |________/\n\
 \n\
   {APP_NAME} bootstrapper v{}\n\
-  ReactOS unofficial build system\n",
+  unofficial build environment\n",
         env!("CARGO_PKG_VERSION")
     );
 }

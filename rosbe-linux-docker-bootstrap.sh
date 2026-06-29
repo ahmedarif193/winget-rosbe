@@ -1,5 +1,5 @@
 #!/bin/sh
-# ReactOS RosBE - Linux Docker bootstrap installer.
+# RosBE - Linux Docker bootstrap installer.
 # Use: wget -qO- https://raw.githubusercontent.com/ahmedarif193/winget-rosbe/main/rosbe-linux-docker-bootstrap.sh | sh
 
 set -eu
@@ -27,7 +27,7 @@ warn() { printf '%s[WARN]%s %s\n' "${YELLOW}" "${NC}" "$*" >&2; }
 fail() { printf '%s[FAIL]%s %s\n' "${RED}" "${NC}" "$*" >&2; exit 1; }
 
 banner() {
-    printf '%s\n' "${GREEN}ReactOS RosBE - Linux Docker Bootstrap${NC}"
+    printf '%s\n' "${GREEN}RosBE - Linux Docker Bootstrap${NC}"
     printf '%s\n\n' "${GREEN}=======================================${NC}"
     printf 'Image:        %s\n' "${IMAGE}"
     printf 'Install dir:  %s\n\n' "${INSTALL_DIR}"

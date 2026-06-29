@@ -1,9 +1,9 @@
-# ReactOS RosBE - Windows Dev Environment via winget configure
+# RosBE - Windows Dev Environment via winget configure
 # Usage (PowerShell as Admin):
 #   winget configure --file personalize.yaml
 #   winget configure --file personalize.yaml --validate-only
 #
-# This installs all the dependencies needed to build ReactOS on Windows.
+# This installs all the dependencies needed for Windows cross-development.
 
 "$schema": "https://aka.ms/winget-configuration.schema.json"
 
@@ -78,7 +78,7 @@ properties:
         id: Microsoft.WinDbg
         source: winget
 
-    # ── Rust (for modern ReactOS components) ──────────────────────────────────
+    # ── Rust (for modern components) ──────────────────────────────────
     - resource: Microsoft.WinGet.DSC/WinGetPackage
       directives:
         description: Rust via rustup

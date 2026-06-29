@@ -291,14 +291,14 @@ package_windows_x64() {
     ok "Created ${pkg}.zip (${zsize})"
 }
 
-# Strip files ReactOS doesn't use AND known false-positive triggers. LTO and
+# Strip files the target doesn't use AND known false-positive triggers. LTO and
 # the Fortran/D/Go/ObjC front-ends balloon the bundle and regularly trip
 # Defender's ML heuristic (Trojan:Win32/Pomal!rfn).
 trim_bundle() {
     local root="$1"
     local rm_paths=(
         build.log.bz2                # ct-ng build log, ~5MB of noise
-        bin/*gfortran*.exe           # Fortran front-end, unused by ReactOS
+        bin/*gfortran*.exe           # Fortran front-end, unused here
         bin/*gdc*.exe                # D front-end, unused
         bin/*gccgo*.exe              # Go front-end, unused
         bin/*nasm*.exe               # NASM assembler/disassembler, ML flag
@@ -309,7 +309,7 @@ trim_bundle() {
         libexec/gcc/*/*/cc1obj.exe libexec/gcc/*/*/cc1objplus.exe
         libexec/gcc/*/*/f951.exe
         libexec/gcc/*/*/cc1gccgo.exe libexec/gcc/*/*/cc1d.exe
-        libexec/gcc/*/*/lto1.exe     # LTO not used by ReactOS, often flagged
+        libexec/gcc/*/*/lto1.exe     # LTO not used here, often flagged
         */sysroot/lib/libgfortran* */sysroot/lib32/libgfortran*
         */sysroot/lib/libgo* */sysroot/lib32/libgo*
         */sysroot/lib/libgphobos* */sysroot/lib32/libgphobos*
@@ -331,7 +331,7 @@ generate_checksums() {
 
 # ── Main ──────────────────────────────────────────────────────────────────────
 main() {
-    echo -e "${GREEN}ReactOS RosBE - Packager v${VERSION}${NC}"
+    echo -e "${GREEN}RosBE - Packager v${VERSION}${NC}"
     echo ""
 
     ensure_tools

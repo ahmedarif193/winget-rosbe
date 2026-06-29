@@ -1,5 +1,5 @@
 #!/bin/sh
-# ReactOS RosBE - Unix bootstrap installer (Linux and macOS)
+# RosBE - Unix bootstrap installer (Linux and macOS)
 #
 # Intended use:
 #   wget -qO- https://raw.githubusercontent.com/ahmedarif193/winget-rosbe/main/rosbe-unix-bootstrap.sh | sh
@@ -20,7 +20,7 @@
 
 set -eu
 
-LLVM_VERSION=20251202
+LLVM_VERSION=20260616
 LLVM_TRIPLET=ucrt
 GCC_VERSION=15.2.0
 GCC_TAG=v15.2
@@ -51,7 +51,7 @@ trap cleanup EXIT
 trap 'cleanup; exit 130' INT TERM
 
 banner() {
-    printf '%s\n' "${GREEN}ReactOS RosBE - Unix Bootstrap${NC}"
+    printf '%s\n' "${GREEN}RosBE - Unix Bootstrap${NC}"
     printf '%s\n\n' "${GREEN}===============================${NC}"
     printf 'Install root: %s\n' "${INSTALL_ROOT}"
     printf 'Toolchains:   LLVM-MinGW %s, MinGW-GCC %s\n\n' "${LLVM_VERSION}" "${GCC_VERSION}"
@@ -204,7 +204,7 @@ write_env_file() {
     env_file="${INSTALL_ROOT}/rosbe-env.sh"
 
     cat > "${env_file}" <<EOF
-# ReactOS RosBE environment. Source this file from a shell:
+# RosBE environment. Source this file from a shell:
 #   . "${env_file}"
 
 export ROSBE_ROOT="${INSTALL_ROOT}"
@@ -244,7 +244,7 @@ EOF
 }
 
 print_summary() {
-    printf '\n%s\n' "${GREEN}ReactOS RosBE installed.${NC}"
+    printf '\n%s\n' "${GREEN}RosBE installed.${NC}"
     printf '\nUse it with:\n'
     printf '  %s/rosbe-shell\n\n' "${BIN_DIR}"
     printf 'Or source it in the current shell:\n'

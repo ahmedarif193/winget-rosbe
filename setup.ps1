@@ -1,9 +1,9 @@
 #Requires -Version 5.1
 <#
 .SYNOPSIS
-    ReactOS RosBE - Windows Setup Script
+    RosBE - Windows Setup Script
 .DESCRIPTION
-    Downloads and extracts all toolchains + build tools for ReactOS development
+    Downloads and extracts all toolchains + build tools for Windows cross-development
     into a flat per-component layout that mirrors the winget package.
 
     Layout produced (under -InstallRoot, default $PSScriptRoot):
@@ -224,7 +224,7 @@ function Setup-MingwGcc {
 # ── Main ──────────────────────────────────────────────────────────────────────
 function Main {
     Write-Host ""
-    Write-Host "  ReactOS RosBE - Windows Setup" -ForegroundColor Green
+    Write-Host "  RosBE - Windows Setup" -ForegroundColor Green
     Write-Host "  =============================" -ForegroundColor Green
     Write-Host ""
     Write-Host "  Host: Windows $HostArch"
@@ -251,7 +251,7 @@ function Main {
     Write-Host "  Each component lives in its own top-level folder under:"
     Write-Host "    $InstallRoot"
     Write-Host ""
-    Write-Host "  Point CMake at ReactOS with either toolchain file:"
+    Write-Host "  Point CMake at your project with either toolchain file:"
     Write-Host "    -DCMAKE_TOOLCHAIN_FILE=$InstallRoot\mingw-gcc\x86_64-w64-mingw32\toolchain.cmake"
     Write-Host "    -DCMAKE_TOOLCHAIN_FILE=<reactos>\toolchain-clang.cmake   (LLVM)"
     Write-Host ""

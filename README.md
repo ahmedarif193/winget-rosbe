@@ -1,9 +1,9 @@
-# ReactOS RosBE
+# RosBE
 
 [![Validation](https://github.com/ahmedarif193/winget-rosbe/actions/workflows/validate.yml/badge.svg?branch=main)](https://github.com/ahmedarif193/winget-rosbe/actions/workflows/validate.yml)
 [![Publish](https://github.com/ahmedarif193/winget-rosbe/actions/workflows/release.yml/badge.svg?branch=main)](https://github.com/ahmedarif193/winget-rosbe/actions/workflows/release.yml)
 
-Unofficial ReactOS build environment for Windows, Linux, and macOS.
+A cross-build toolchain for Windows, Linux, and macOS, with unofficial support for ReactOS.
 
 - Windows: `winget` installs the small `rosbe` bootstrapper, then `rosbe install` downloads and verifies the toolchain bundle.
 - Linux / macOS: a single bootstrap script auto-detects the host OS and architecture and installs the toolchain tree under `~/.local/opt/rosbe`.
@@ -14,7 +14,7 @@ Unofficial ReactOS build environment for Windows, Linux, and macOS.
 Windows:
 
 ```powershell
-winget install ReactOS.RosBE
+winget install AhmedArif.RosBE
 rosbe install
 rosbe enable
 ```
@@ -74,7 +74,7 @@ rosbe disable
 ```
 
 For the Linux / macOS host install, run `~/.local/bin/rosbe-shell` or source
-`~/.local/opt/rosbe/rosbe-env.sh` before configuring ReactOS. The host
+`~/.local/opt/rosbe/rosbe-env.sh` before configuring your build. The host
 bootstrap installs only the toolchains; use your distro / Homebrew packages
 for CMake, Ninja, Flex, and Bison.
 
@@ -82,7 +82,7 @@ for CMake, Ninja, Flex, and Bison.
 
 | Component | Version |
 |-----------|---------|
-| LLVM-MinGW (Clang + lld + libc++) | 21.1.7 (20251202) |
+| LLVM-MinGW (Clang + lld + libc++) | 22.1.8 (20260616) |
 | MinGW-GCC (crosstool-NG Canadian-cross, UCRT) | 15.2.0 |
 | CMake | 3.31.6 |
 | Ninja | 1.12.1 |
@@ -102,7 +102,6 @@ Targets: `i686` and `x86_64` (Windows UCRT).
 
 - Maintainer documentation: [wiki](https://github.com/ahmedarif193/winget-rosbe/wiki)
 - Issues / feedback: [issue tracker](https://github.com/ahmedarif193/winget-rosbe/issues)
-- ReactOS: <https://reactos.org>
 
 ## License
 

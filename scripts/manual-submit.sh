@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Prepare a winget-pkgs PR for ReactOS.RosBE <version> WITHOUT actually
+# Prepare a winget-pkgs PR for AhmedArif.RosBE <version> WITHOUT actually
 # creating the PR. Maintains a persistent local checkout of the fork at
 # $WINGET_PKGS_DIR (default $HOME/winget-pkgs) - first run clones it, every
 # subsequent run reuses it. Drops the manifests on a fresh branch, commits,
@@ -16,13 +16,13 @@ set -euo pipefail
 
 VERSION="${1:-$(date -u +%Y%m%d)}"
 
-PKG_ID="ReactOS.RosBE"
-LETTER="r"
+PKG_ID="AhmedArif.RosBE"
+LETTER="a"
 FORK_USER="ahmedarif193"
 UPSTREAM="microsoft/winget-pkgs"
 FORK_SSH="git@github.com:${FORK_USER}/winget-pkgs.git"
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-SRC_DIR="${ROOT_DIR}/winget/manifests/${LETTER}/ReactOS/RosBE/${VERSION}"
+SRC_DIR="${ROOT_DIR}/winget/manifests/${LETTER}/AhmedArif/RosBE/${VERSION}"
 WINGET_PKGS_DIR="${WINGET_PKGS_DIR:-$HOME/winget-pkgs}"
 BRANCH="${PKG_ID}-${VERSION}"
 
@@ -54,7 +54,7 @@ git fetch --quiet --depth=1 upstream master
 echo "Creating branch ${BRANCH} from upstream/master..."
 git checkout -B "$BRANCH" upstream/master --quiet
 
-DEST="manifests/${LETTER}/ReactOS/RosBE/${VERSION}"
+DEST="manifests/${LETTER}/AhmedArif/RosBE/${VERSION}"
 echo "Copying manifests into ${DEST}/..."
 mkdir -p "$DEST"
 cp "$SRC_DIR"/*.yaml "$DEST/"
@@ -76,21 +76,21 @@ SHA256="$(awk '/InstallerSha256:/ {print $2}' "$INSTALLER_YAML")"
 
 # If this version's manifest dir already exists in upstream master, it's an
 # update; otherwise it's the first-ever submission of this package.
-if git -C "$WINGET_PKGS_DIR" cat-file -e "upstream/master:manifests/${LETTER}/ReactOS/RosBE" 2>/dev/null; then
+if git -C "$WINGET_PKGS_DIR" cat-file -e "upstream/master:manifests/${LETTER}/AhmedArif/RosBE" 2>/dev/null; then
     PR_KIND="New version"
 else
     PR_KIND="New package"
 fi
 
 PR_TITLE="${PR_KIND}: ${PKG_ID} version ${VERSION}"
-PR_BODY="### ${PR_KIND} from [ReactOS RosBE](https://github.com/ahmedarif193/winget-rosbe) :rocket:
+PR_BODY="### ${PR_KIND} from [RosBE](https://github.com/ahmedarif193/winget-rosbe) :rocket:
 
 - **Version**: \`${VERSION}\`
 - **Release**: https://github.com/ahmedarif193/winget-rosbe/releases/tag/v${VERSION}
 - **Bootstrapper SHA256 (x64)**: \`${SHA256}\`
 - **Post-install**: \`rosbe install\` then \`rosbe enable\`
 
-A lightweight, winget-installable Rust bootstrapper for [ReactOS](https://reactos.org). The `winget` package installs `rosbe`, and `rosbe install` later downloads and verifies the RosBE toolchain bundle on demand.
+A lightweight, winget-installable Rust bootstrapper with unofficial [ReactOS](https://reactos.org) support. The `winget` package installs `rosbe`, and `rosbe install` later downloads and verifies the RosBE toolchain bundle on demand.
 
 #### Checklist
 
