@@ -220,6 +220,16 @@ rosbe_prepend_path() {
 rosbe_prepend_path "\${ROSBE_ROOT}/llvm-mingw/bin"
 rosbe_prepend_path "\${ROSBE_ROOT}/mingw-gcc/i686-w64-mingw32/bin"
 rosbe_prepend_path "\${ROSBE_ROOT}/mingw-gcc/x86_64-w64-mingw32/bin"
+EOF
+
+    # macOS ships bison 2.3 (pre-GPLv3 freeze); prefer the Homebrew copy when present.
+    if [ "${HOST_OS}" = "macos" ]; then
+        cat >> "${env_file}" <<'EOF'
+rosbe_prepend_path "/opt/homebrew/opt/bison/bin"
+EOF
+    fi
+
+    cat >> "${env_file}" <<'EOF'
 
 export PATH
 unset -f rosbe_prepend_path 2>/dev/null || unset rosbe_prepend_path
