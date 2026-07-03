@@ -42,18 +42,30 @@ pick_engine() {
     fail "neither podman nor docker found in PATH"
 }
 
+install_host_fallback() {
+    _hb="${INSTALL_DIR}/rosbe-unix-bootstrap.sh"
+    if [ ! -f "${_hb}" ]; then
+        warn "Cached host bootstrap missing (${_hb}); cannot fall back."
+        return 1
+    fi
+    info "Downloading the non-Docker host toolchain (no registry login needed)..."
+    sh "${_hb}"
+}
+
 ensure_image() {
     if "${ENGINE}" image inspect "${IMAGE}" >/dev/null 2>&1; then
         ok "Image already present locally: ${IMAGE}"
-        return
+        return 0
     fi
     info "Installing image from ${IMAGE} via ${ENGINE}..."
     if "${ENGINE}" pull "${IMAGE}"; then
         ok "Image installed"
-        return
+        return 0
     fi
-    warn "Pull failed; you may need to log in to the registry or build locally."
-    warn "Continuing install; you can build later with: ${ENGINE} build -t ${IMAGE} <path-to-Dockerfile>"
+    warn "Container image unavailable (e.g. 403 Forbidden); not stopping."
+    warn "Falling back to the non-Docker host toolchain (~/.local/opt/rosbe)."
+    install_host_fallback || warn "Host toolchain install incomplete; 'rosbe enable' will retry."
+    return 0
 }
 
 create_install_dir() {
@@ -174,8 +186,29 @@ if [ -z "${ROSBE_DOCKER_HOME:-}" ]; then
 fi
 
 if ! "$ROSBE_DOCKER_HOME/rosbe-docker.sh" ensure-image; then
-    echo "rosbe-enable: failed to ensure image; aborting" >&2
-    return 1 2>/dev/null || exit 1
+    echo "rosbe: container image unavailable; using host toolchain" >&2
+    _rosbe_host="$HOME/.local/opt/rosbe"
+    if [ ! -f "$_rosbe_host/rosbe-env.sh" ] && [ -f "$ROSBE_DOCKER_HOME/rosbe-unix-bootstrap.sh" ]; then
+        sh "$ROSBE_DOCKER_HOME/rosbe-unix-bootstrap.sh" || true
+    fi
+    if [ ! -f "$_rosbe_host/rosbe-env.sh" ]; then
+        echo "rosbe: host toolchain unavailable; cannot enable" >&2
+        return 1 2>/dev/null || exit 1
+    fi
+    export _ROSBE_OLD_PATH="$PATH"
+    . "$_rosbe_host/rosbe-env.sh"
+    export ROSBE_DOCKER_ACTIVE=1
+    export REACTOS_CLANG_LLVM_MINGW_ROOT="$ROSBE_ROOT/llvm-mingw"
+    export LLVM_MINGW_ROOT="$ROSBE_ROOT/llvm-mingw"
+    rosbe_disable() {
+        [ -n "${_ROSBE_OLD_PATH:-}" ] && export PATH="$_ROSBE_OLD_PATH"
+        unset _ROSBE_OLD_PATH ROSBE_DOCKER_ACTIVE ROSBE_ROOT
+        unset REACTOS_CLANG_LLVM_MINGW_ROOT LLVM_MINGW_ROOT
+        unset -f rosbe_disable 2>/dev/null || true
+        echo "rosbe: disabled"
+    }
+    echo "rosbe: enabled (host toolchain). Run 'rosbe disable' to deactivate."
+    return 0 2>/dev/null || exit 0
 fi
 
 # Stash original PATH so rosbe_disable can restore it.
@@ -248,20 +281,7 @@ user_flags() {
 
 ensure_image() {
     if "$ENGINE" image inspect "$IMAGE" >/dev/null 2>&1; then return 0; fi
-    if "$ENGINE" pull "$IMAGE" 2>/dev/null; then return 0; fi
-    # Fallback: build from the Dockerfile + bootstrap cached at install time.
-    if [ -n "${ROSBE_DOCKER_HOME:-}" ] && \
-       [ -f "$ROSBE_DOCKER_HOME/docker/Dockerfile" ] && \
-       [ -f "$ROSBE_DOCKER_HOME/rosbe-unix-bootstrap.sh" ]; then
-        echo "rosbe-docker: pull failed; building locally from $ROSBE_DOCKER_HOME" >&2
-        "$ENGINE" build -t "$IMAGE" \
-            -f "$ROSBE_DOCKER_HOME/docker/Dockerfile" \
-            "$ROSBE_DOCKER_HOME"
-        return $?
-    fi
-    echo "rosbe-docker: image $IMAGE not available, pull failed, no cached Dockerfile" >&2
-    echo "rosbe-docker: re-run the bootstrap or fix registry access" >&2
-    return 1
+    "$ENGINE" pull "$IMAGE"
 }
 
 update_image() {
