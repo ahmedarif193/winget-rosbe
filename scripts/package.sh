@@ -187,9 +187,9 @@ package_linux() {
     chmod +x "${staging}/ninja-${NINJA_VERSION}/ninja"
 
     # LLVM-MinGW (Linux) -> llvm-mingw/
-    download "${LLVM_LINUX_URL}" "${CACHE_DIR}/llvm-linux.tar.xz"
+    download "${LLVM_LINUX_URL}" "${CACHE_DIR}/llvm-${LLVM_VERSION}-linux-x64.tar.xz"
     mkdir -p "${staging}/llvm-mingw"
-    tar -xf "${CACHE_DIR}/llvm-linux.tar.xz" -C "${staging}/llvm-mingw" --strip-components=1
+    tar -xf "${CACHE_DIR}/llvm-${LLVM_VERSION}-linux-x64.tar.xz" -C "${staging}/llvm-mingw" --strip-components=1
 
     # MinGW-GCC (Linux crosstool-NG) -> mingw-gcc/<triple>/
     for entry in "i686-w64-mingw32:tar.gz:${GCC_LINUX_I686_URL}" \
@@ -247,10 +247,10 @@ package_windows_x64() {
     cp "${wfb}/win_bison.exe" "${wfb}/bison.exe"
 
     # LLVM-MinGW (Windows) -> llvm-mingw/
-    download "${LLVM_WIN_X64_URL}" "${CACHE_DIR}/llvm-win-x64.zip"
+    download "${LLVM_WIN_X64_URL}" "${CACHE_DIR}/llvm-${LLVM_VERSION}-win-x64.zip"
     info "Extracting llvm-win-x64.zip (~500MB extracted)..."
     reset_tmp_dir "${CACHE_DIR}/llvm-tmp"
-    unzip -qo "${CACHE_DIR}/llvm-win-x64.zip" -d "${CACHE_DIR}/llvm-tmp"
+    unzip -qo "${CACHE_DIR}/llvm-${LLVM_VERSION}-win-x64.zip" -d "${CACHE_DIR}/llvm-tmp"
     move_extracted_dir "${CACHE_DIR}/llvm-tmp" "llvm-mingw-*" "${staging}/llvm-mingw"
 
     # MinGW-GCC (Canadian-cross, ahmedarif193/mingw-gcc15.2) -> mingw-gcc/<triple>/

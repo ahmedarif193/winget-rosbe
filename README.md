@@ -82,7 +82,7 @@ for CMake, Ninja, Flex, and Bison.
 
 | Component | Version |
 |-----------|---------|
-| LLVM-MinGW (Clang + lld + libc++) | 22.1.8 (20260616) |
+| LLVM-MinGW (Clang + lld + libc++) | 23.1.0 (20260826) |
 | MinGW-GCC (crosstool-NG Canadian-cross, UCRT) | 15.2.0 |
 | CMake | 3.31.6 |
 | Ninja | 1.12.1 |

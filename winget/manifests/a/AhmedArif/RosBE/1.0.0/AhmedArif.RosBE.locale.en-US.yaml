@@ -20,7 +20,7 @@ Description: |-
   to add the active toolchain directories to PATH.
 
   Managed in this version:
-    - LLVM-MinGW (Clang) 22.1.8   - llvm-mingw 20260616 (UCRT)
+    - LLVM-MinGW (Clang) 23.1.0   - llvm-mingw 20260826 (UCRT)
     - MinGW-GCC                  15.2.0    - crosstool-NG Canadian-cross (UCRT)
     - CMake                      3.31.6
     - Ninja                      1.12.1
