@@ -43,7 +43,7 @@ curl -fsSL https://raw.githubusercontent.com/ahmedarif193/winget-rosbe/main/rosb
 
 The bootstrap detects:
 
-- **Linux x86_64 / aarch64** — installs LLVM-MinGW plus the ct-ng MinGW-GCC toolchains for `i686` and `x86_64` Windows targets.
+- **Linux x86_64 / aarch64** — installs LLVM-MinGW plus the ct-ng MinGW-GCC toolchains for `i686`, `x86_64`, and `aarch64` Windows targets.
 - **macOS Intel / Apple Silicon** — installs the LLVM-MinGW universal binary (Clang + lld + libc++). The ct-ng GCC bundle has no upstream macOS host build; if you need GCC, run `brew install mingw-w64` (separate version, MSVCRT default).
 
 The script always replaces any previous tree at `~/.local/opt/rosbe` with a
@@ -83,13 +83,13 @@ for CMake, Ninja, Flex, and Bison.
 | Component | Version |
 |-----------|---------|
 | LLVM-MinGW (Clang + lld + libc++) | 23.1.0 (20260826) |
-| MinGW-GCC (crosstool-NG Canadian-cross, UCRT) | 15.2.0 |
+| MinGW-GCC (crosstool-NG Canadian-cross, UCRT) | 16.2.0 |
 | CMake | 3.31.6 |
 | Ninja | 1.12.1 |
 | Flex + Bison (winflexbison) | 2.6.4 / 3.8.2 |
 | QEMU (Windows bundle) | 11.0.0 |
 
-Targets: `i686` and `x86_64` (Windows UCRT).
+Targets: `i686`, `x86_64`, and `aarch64` (Windows UCRT).
 
 ## Repository layout
 

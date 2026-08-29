@@ -175,6 +175,7 @@ env_output="$(
 echo "${env_output}"
 grep -F "ROSBE_ROOT" <<<"${env_output}" >/dev/null
 grep -F "mingw-gcc\\x86_64-w64-mingw32\\bin" <<<"${env_output}" >/dev/null
+grep -F "mingw-gcc\\aarch64-w64-mingw32\\bin" <<<"${env_output}" >/dev/null
 grep -F "qemu-11.0.0" <<<"${env_output}" >/dev/null
 
 run_rosbe "${GOOD_PREFIX}" --no-banner disable

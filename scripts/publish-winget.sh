@@ -109,7 +109,7 @@ cat > "$BODY_FILE" <<EOF
 
 Managed toolchain versions:
 - LLVM-MinGW: \`${LLVM_VERSION}\`
-- MinGW-GCC (ct-ng Canadian-cross): \`${GCC_VERSION}\` (${GCC_TAG} from ahmedarif193/mingw-gcc15.2)
+- MinGW-GCC (ct-ng Canadian-cross): \`${GCC_VERSION}\` (${GCC_TAG} from ahmedarif193/mingw-gcc16.2)
 - CMake: \`${CMAKE_VERSION}\`
 - Ninja: \`${NINJA_VERSION}\`
 - WinFlexBison: \`${WINFLEXBISON_VERSION}\`

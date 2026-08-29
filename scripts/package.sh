@@ -39,12 +39,13 @@ LLVM_BASE="https://github.com/mstorsjo/llvm-mingw/releases/download/${LLVM_VERSI
 LLVM_LINUX_URL="${LLVM_BASE}/llvm-mingw-${LLVM_VERSION}-${LLVM_TRIPLET}-ubuntu-22.04-x86_64.tar.xz"
 LLVM_WIN_X64_URL="${LLVM_BASE}/llvm-mingw-${LLVM_VERSION}-${LLVM_TRIPLET}-x86_64.zip"
 
-GCC_BASE="https://github.com/ahmedarif193/mingw-gcc15.2/releases/download/${GCC_TAG}"
+GCC_BASE="https://github.com/ahmedarif193/mingw-gcc16.2/releases/download/${GCC_TAG}"
 GCC_LINUX_I686_URL="${GCC_BASE}/i686-w64-mingw32.tar.gz"
 GCC_LINUX_X64_URL="${GCC_BASE}/x86_64-w64-mingw32.tar.gz"
 GCC_LINUX_AARCH64_URL="${GCC_BASE}/aarch64-w64-mingw32.tar.xz"
 GCC_WIN_X64_URL="${GCC_BASE}/x86_64-w64-mingw32-winhost.zip"
 GCC_WIN_I686_URL="${GCC_BASE}/i686-w64-mingw32-winhost.zip"
+GCC_WIN_AARCH64_URL="${GCC_BASE}/aarch64-w64-mingw32-winhost.zip"
 
 CMAKE_LINUX_URL="https://github.com/Kitware/CMake/releases/download/v${CMAKE_VERSION}/cmake-${CMAKE_VERSION}-linux-x86_64.tar.gz"
 CMAKE_WIN_URL="https://github.com/Kitware/CMake/releases/download/v${CMAKE_VERSION}/cmake-${CMAKE_VERSION}-windows-x86_64.zip"
@@ -135,6 +136,7 @@ write_windows_component_manifest() {
   { "name": "LLVM-MinGW", "version": "${LLVM_VERSION}", "path": "llvm-mingw/bin" },
   { "name": "MinGW-GCC (x86_64)", "version": "${GCC_VERSION}", "path": "mingw-gcc/x86_64-w64-mingw32/bin" },
   { "name": "MinGW-GCC (i686)", "version": "${GCC_VERSION}", "path": "mingw-gcc/i686-w64-mingw32/bin" },
+  { "name": "MinGW-GCC (AArch64)", "version": "${GCC_VERSION}", "path": "mingw-gcc/aarch64-w64-mingw32/bin" },
   { "name": "QEMU", "version": "${QEMU_VERSION}", "path": "qemu-${QEMU_VERSION}" }
 ]
 EOF
@@ -197,8 +199,8 @@ package_linux() {
                  "aarch64-w64-mingw32:tar.xz:${GCC_LINUX_AARCH64_URL}"; do
         local triple="${entry%%:*}"; local rest="${entry#*:}"
         local ext="${rest%%:*}"; local url="${rest#*:}"
-        download "${url}" "${CACHE_DIR}/${triple}.${ext}"
-        tar -xf "${CACHE_DIR}/${triple}.${ext}" -C "${staging}/mingw-gcc"
+        download "${url}" "${CACHE_DIR}/gcc-${GCC_VERSION}-${triple}.${ext}"
+        tar -xf "${CACHE_DIR}/gcc-${GCC_VERSION}-${triple}.${ext}" -C "${staging}/mingw-gcc"
     done
 
     tar -cJf "${DIST_DIR}/${pkg}.tar.xz" -C "${DIST_DIR}/staging" "${pkg}"
@@ -212,7 +214,7 @@ package_linux() {
 #     ninja-${NINJA_VERSION}/ninja.exe
 #     win_flex_bison-${WINFLEXBISON_VERSION}/win_flex.exe, win_bison.exe ...
 #     llvm-mingw/bin/clang.exe ...
-#     mingw-gcc/{x86_64,i686}-w64-mingw32/bin/<triple>-gcc.exe ...
+#     mingw-gcc/{x86_64,i686,aarch64}-w64-mingw32/bin/<triple>-gcc.exe ...
 #     qemu-${QEMU_VERSION}/qemu-system-x86_64.exe ...
 package_windows_x64() {
     local pkg="rosbe-${VERSION}-win-x64"
@@ -253,22 +255,29 @@ package_windows_x64() {
     unzip -qo "${CACHE_DIR}/llvm-${LLVM_VERSION}-win-x64.zip" -d "${CACHE_DIR}/llvm-tmp"
     move_extracted_dir "${CACHE_DIR}/llvm-tmp" "llvm-mingw-*" "${staging}/llvm-mingw"
 
-    # MinGW-GCC (Canadian-cross, ahmedarif193/mingw-gcc15.2) -> mingw-gcc/<triple>/
-    download "${GCC_WIN_X64_URL}" "${CACHE_DIR}/gcc-win-x64.zip"
+    # MinGW-GCC (Windows x64-hosted Canadian-cross) -> mingw-gcc/<triple>/
+    download "${GCC_WIN_X64_URL}" "${CACHE_DIR}/gcc-${GCC_VERSION}-win-x64.zip"
     info "Extracting gcc-win-x64.zip..."
     reset_tmp_dir "${CACHE_DIR}/gcc-win-x64-tmp"
-    unzip -qo "${CACHE_DIR}/gcc-win-x64.zip" -d "${CACHE_DIR}/gcc-win-x64-tmp"
+    unzip -qo "${CACHE_DIR}/gcc-${GCC_VERSION}-win-x64.zip" -d "${CACHE_DIR}/gcc-win-x64-tmp"
     move_extracted_dir "${CACHE_DIR}/gcc-win-x64-tmp" "x86_64-w64-mingw32-winhost" "${staging}/mingw-gcc/x86_64-w64-mingw32"
 
-    download "${GCC_WIN_I686_URL}" "${CACHE_DIR}/gcc-win-i686.zip"
+    download "${GCC_WIN_I686_URL}" "${CACHE_DIR}/gcc-${GCC_VERSION}-win-i686.zip"
     info "Extracting gcc-win-i686.zip..."
     reset_tmp_dir "${CACHE_DIR}/gcc-win-i686-tmp"
-    unzip -qo "${CACHE_DIR}/gcc-win-i686.zip" -d "${CACHE_DIR}/gcc-win-i686-tmp"
+    unzip -qo "${CACHE_DIR}/gcc-${GCC_VERSION}-win-i686.zip" -d "${CACHE_DIR}/gcc-win-i686-tmp"
     move_extracted_dir "${CACHE_DIR}/gcc-win-i686-tmp" "i686-w64-mingw32-winhost" "${staging}/mingw-gcc/i686-w64-mingw32"
+
+    download "${GCC_WIN_AARCH64_URL}" "${CACHE_DIR}/gcc-${GCC_VERSION}-win-aarch64.zip"
+    info "Extracting gcc-win-aarch64.zip..."
+    reset_tmp_dir "${CACHE_DIR}/gcc-win-aarch64-tmp"
+    unzip -qo "${CACHE_DIR}/gcc-${GCC_VERSION}-win-aarch64.zip" -d "${CACHE_DIR}/gcc-win-aarch64-tmp"
+    move_extracted_dir "${CACHE_DIR}/gcc-win-aarch64-tmp" "aarch64-w64-mingw32-winhost" "${staging}/mingw-gcc/aarch64-w64-mingw32"
 
     info "Trimming bundle..."
     trim_bundle "${staging}/mingw-gcc/x86_64-w64-mingw32"
     trim_bundle "${staging}/mingw-gcc/i686-w64-mingw32"
+    trim_bundle "${staging}/mingw-gcc/aarch64-w64-mingw32"
 
     # QEMU (Windows) -> qemu-<version>/
     download "${QEMU_WIN_URL}" "${CACHE_DIR}/${QEMU_WIN_NAME}"

@@ -10,7 +10,7 @@
 #   ~/.local/opt/rosbe
 #
 # Linux  : LLVM-MinGW (host build for the detected arch) + ct-ng MinGW-GCC
-#          for i686 and x86_64 Windows targets.
+#          for i686, x86_64, and AArch64 Windows targets.
 # macOS  : LLVM-MinGW universal binary (covers both Intel and Apple Silicon).
 #          The ct-ng MinGW-GCC bundle has no macOS host build upstream; if you
 #          need GCC on macOS, `brew install mingw-w64` is the easiest option
@@ -22,15 +22,15 @@ set -eu
 
 LLVM_VERSION=20260826
 LLVM_TRIPLET=ucrt
-GCC_VERSION=15.2.0
-GCC_TAG=v15.2
+GCC_VERSION=16.2.0
+GCC_TAG=v16.2
 
 INSTALL_ROOT="${INSTALL_ROOT:-${HOME}/.local/opt/rosbe}"
 BIN_DIR="${BIN_DIR:-${HOME}/.local/bin}"
 TMP_DIR=""
 
 LLVM_BASE_URL="https://github.com/mstorsjo/llvm-mingw/releases/download/${LLVM_VERSION}"
-GCC_BASE_URL="https://github.com/ahmedarif193/mingw-gcc15.2/releases/download/${GCC_TAG}"
+GCC_BASE_URL="https://github.com/ahmedarif193/mingw-gcc16.2/releases/download/${GCC_TAG}"
 
 RED="$(printf '\033[0;31m')"
 GREEN="$(printf '\033[0;32m')"
@@ -187,6 +187,7 @@ install_mingw_gcc() {
     fi
     install_mingw_gcc_arch "i686-w64-mingw32" "tar.gz" "i686-w64-mingw32" "i686-w64-mingw32-gcc"
     install_mingw_gcc_arch "x86_64-w64-mingw32" "tar.gz" "x86_64-w64-mingw32" "x86_64-w64-mingw32-gcc"
+    install_mingw_gcc_arch "aarch64-w64-mingw32" "tar.xz" "aarch64-w64-mingw32" "aarch64-w64-mingw32-gcc"
 }
 
 # Defensive: clear com.apple.quarantine after extraction. curl/wget do not set
@@ -220,6 +221,7 @@ rosbe_prepend_path() {
 rosbe_prepend_path "\${ROSBE_ROOT}/llvm-mingw/bin"
 rosbe_prepend_path "\${ROSBE_ROOT}/mingw-gcc/i686-w64-mingw32/bin"
 rosbe_prepend_path "\${ROSBE_ROOT}/mingw-gcc/x86_64-w64-mingw32/bin"
+rosbe_prepend_path "\${ROSBE_ROOT}/mingw-gcc/aarch64-w64-mingw32/bin"
 
 export PATH
 unset -f rosbe_prepend_path 2>/dev/null || unset rosbe_prepend_path

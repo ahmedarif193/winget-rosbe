@@ -87,6 +87,7 @@ impl RosbePaths {
         for required in [
             "mingw-gcc/x86_64-w64-mingw32/bin/x86_64-w64-mingw32-gcc.exe",
             "mingw-gcc/i686-w64-mingw32/bin/i686-w64-mingw32-gcc.exe",
+            "mingw-gcc/aarch64-w64-mingw32/bin/aarch64-w64-mingw32-gcc.exe",
             "llvm-mingw/bin/clang.exe",
         ] {
             let probe = install_dir.join(required);
@@ -188,6 +189,11 @@ impl RosbePaths {
                 name: String::from("MinGW-GCC (i686)"),
                 version: String::from("unknown"),
                 path: String::from("mingw-gcc/i686-w64-mingw32/bin"),
+            },
+            ComponentSpec {
+                name: String::from("MinGW-GCC (AArch64)"),
+                version: String::from("unknown"),
+                path: String::from("mingw-gcc/aarch64-w64-mingw32/bin"),
             },
         ];
 

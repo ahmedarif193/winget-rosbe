@@ -13,6 +13,7 @@
       llvm-mingw\bin\clang.exe ...
       mingw-gcc\x86_64-w64-mingw32\bin\x86_64-w64-mingw32-gcc.exe ...
       mingw-gcc\i686-w64-mingw32\bin\i686-w64-mingw32-gcc.exe ...
+      mingw-gcc\aarch64-w64-mingw32\bin\aarch64-w64-mingw32-gcc.exe ...
 .EXAMPLE
     .\setup.ps1
     .\setup.ps1 -LlvmOnly
@@ -44,10 +45,12 @@ $LlvmVersion         = $V['LLVM_VERSION']
 $LlvmTriplet         = $V['LLVM_TRIPLET']
 $LlvmBaseUrl         = "https://github.com/mstorsjo/llvm-mingw/releases/download/$LlvmVersion"
 
+$GccVersion          = $V['GCC_VERSION']
 $GccTag              = $V['GCC_TAG']
-$GccBaseUrl          = "https://github.com/ahmedarif193/mingw-gcc15.2/releases/download/$GccTag"
+$GccBaseUrl          = "https://github.com/ahmedarif193/mingw-gcc16.2/releases/download/$GccTag"
 $GccWinX64Asset      = "x86_64-w64-mingw32-winhost.zip"
 $GccWinX86Asset      = "i686-w64-mingw32-winhost.zip"
+$GccWinArm64Asset    = "aarch64-w64-mingw32-winhost.zip"
 
 $CmakeVersion        = $V['CMAKE_VERSION']
 $CmakeUrl            = "https://github.com/Kitware/CMake/releases/download/v$CmakeVersion/cmake-$CmakeVersion-windows-x86_64.zip"
@@ -186,21 +189,24 @@ function Setup-MingwGcc {
     $gccRoot = Join-Path $InstallRoot "mingw-gcc"
     $x64Dir  = Join-Path $gccRoot "x86_64-w64-mingw32"
     $x86Dir  = Join-Path $gccRoot "i686-w64-mingw32"
+    $arm64Dir = Join-Path $gccRoot "aarch64-w64-mingw32"
     $x64Gcc  = Join-Path $x64Dir "bin\x86_64-w64-mingw32-gcc.exe"
     $x86Gcc  = Join-Path $x86Dir "bin\i686-w64-mingw32-gcc.exe"
+    $arm64Gcc = Join-Path $arm64Dir "bin\aarch64-w64-mingw32-gcc.exe"
 
     New-Item -ItemType Directory -Path $gccRoot -Force | Out-Null
 
     foreach ($arch in @(
         @{ Name="x86_64"; Asset=$GccWinX64Asset; Target=$x64Dir; Probe=$x64Gcc; InnerDir="x86_64-w64-mingw32-winhost" },
-        @{ Name="i686";   Asset=$GccWinX86Asset; Target=$x86Dir; Probe=$x86Gcc; InnerDir="i686-w64-mingw32-winhost"   }
+        @{ Name="i686";   Asset=$GccWinX86Asset; Target=$x86Dir; Probe=$x86Gcc; InnerDir="i686-w64-mingw32-winhost"   },
+        @{ Name="AArch64"; Asset=$GccWinArm64Asset; Target=$arm64Dir; Probe=$arm64Gcc; InnerDir="aarch64-w64-mingw32-winhost" }
     )) {
         if (Test-Path $arch.Probe) {
             Write-Status "x" "Green" "MinGW-GCC $($arch.Name) already installed"
             continue
         }
 
-        $archive = Join-Path $CacheDir $arch.Asset
+        $archive = Join-Path $CacheDir "gcc-$GccVersion-$($arch.Asset)"
         Download-File "$GccBaseUrl/$($arch.Asset)" $archive
 
         $tmpDir = Join-Path $CacheDir "gcc-$($arch.Name)-tmp"
