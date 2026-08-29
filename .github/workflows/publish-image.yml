@@ -12,6 +12,7 @@ on:
     branches: [main]
     paths:
       - 'docker/**'
+      - 'rosbe-unix-bootstrap.sh'
       - '.github/workflows/publish-image.yml'
   release:
     types: [published]

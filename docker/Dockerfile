@@ -21,7 +21,7 @@ RUN chmod +x /usr/local/bin/entrypoint.sh
 ENV ROSBE_ROOT=/opt/rosbe \
     LLVM_MINGW_ROOT=/opt/rosbe/llvm-mingw \
     REACTOS_CLANG_LLVM_MINGW_ROOT=/opt/rosbe/llvm-mingw \
-    PATH=/opt/rosbe/llvm-mingw/bin:/opt/rosbe/mingw-gcc/x86_64-w64-mingw32/bin:/opt/rosbe/mingw-gcc/i686-w64-mingw32/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+    PATH=/opt/rosbe/llvm-mingw/bin:/opt/rosbe/mingw-gcc/x86_64-w64-mingw32/bin:/opt/rosbe/mingw-gcc/i686-w64-mingw32/bin:/opt/rosbe/mingw-gcc/aarch64-w64-mingw32/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
 CMD ["bash"]

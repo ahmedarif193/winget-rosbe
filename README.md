@@ -87,7 +87,7 @@ for CMake, Ninja, Flex, and Bison.
 | CMake | 3.31.6 |
 | Ninja | 1.12.1 |
 | Flex + Bison (winflexbison) | 2.6.4 / 3.8.2 |
-| QEMU (Windows bundle) | 11.0.0 |
+| QEMU (Windows bundle) | 11.1.0 |
 
 Targets: `i686`, `x86_64`, and `aarch64` (Windows UCRT).
 
