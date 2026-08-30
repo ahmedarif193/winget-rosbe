@@ -1,0 +1,150 @@
+Subject: [PATCH 1/1] ms/seh: build the corpus against mingw-w64 headers
+
+Delta applied to the vendored Microsoft SEH conformance corpus
+(modules/rostests/apitests/compiler/ms/seh) so it compiles and links outside
+the ReactOS SDK, against plain mingw-w64 headers. Two independent problems:
+
+1. seh.h -- exception-info intrinsics.
+   mingw-w64's excpt.h declares _exception_code/_exception_info/
+   _abnormal_termination as ordinary functions (on MSVC they are intrinsics)
+   and defines GetExceptionCode() and friends in terms of them. On a PSEH2
+   build nothing defines those symbols, so every test that inspects an
+   exception fails at link time with "undefined reference to _exception_code".
+   Redirect them onto whichever backend pseh2.h selected. Guarded so that
+   backends already providing them as macros (PSEH3, the amd64 GCC plugin)
+   and native-SEH builds are untouched.
+
+2. seh0020..seh0026 -- setjmp spelling.
+   The corpus calls MSVC's one-argument _setjmp(jmp_buf). On mingw-w64
+   _setjmp is not that function: it is usually a macro aliasing
+   __intrinsic_setjmp, and the underlying routine takes a second argument (the
+   establisher frame) that Win64 unwinding requires. Overriding _setjmp in the
+   preprocessor only breaks mingw's own alias, so the call sites are rewritten
+   to plain setjmp(), whose mingw macro already expands to the right spelling
+   (_setjmp / _setjmp3 / _setjmpex / __mingw_setjmp) with the correct frame
+   argument per architecture and CRT.
+
+NOTE: this patch touches ONLY the test corpus. The PSEH implementation
+(sdk/lib/pseh) and the GCC SEH plugin (sdk/tools/gcc_plugin_seh) are used
+verbatim and are deliberately left unmodified, so that measured results
+describe upstream PSEH as it actually ships.
+---
+diff --color -urN a/seh.h b/seh.h
+--- a/seh.h	2026-08-29 12:16:09
++++ b/seh.h	2026-08-29 12:16:09
+@@ -27,3 +27,31 @@
+ #define gcc_volatile volatile
+ 
+ #endif
++
++/* ---- ReactOS PSEH harness: mingw-w64 portability shims (added downstream) ----
++ *
++ * mingw-w64's excpt.h declares _exception_code / _exception_info /
++ * _abnormal_termination as real functions -- they are MSVC intrinsics -- and
++ * defines GetExceptionCode() & friends in terms of them. Nothing provides
++ * those symbols on a PSEH2 build, so every test that inspects an exception
++ * fails to link. Redirect them onto whichever backend pseh2.h selected.
++ * Backends that already define these as macros (PSEH3, the amd64 GCC plugin)
++ * are left alone by the guards.
++ */
++#if !defined(_MSC_VER) && !defined(_SEH2_NATIVE_SEH)
++# undef GetExceptionCode
++# define GetExceptionCode() _SEH2_GetExceptionCode()
++# undef GetExceptionInformation
++# define GetExceptionInformation() _SEH2_GetExceptionInformation()
++# undef AbnormalTermination
++# define AbnormalTermination() _SEH2_AbnormalTermination()
++# if !defined(_abnormal_termination)
++#  define _abnormal_termination() _SEH2_AbnormalTermination()
++# endif
++# if !defined(_exception_code)
++#  define _exception_code() _SEH2_GetExceptionCode()
++# endif
++# if !defined(_exception_info)
++#  define _exception_info() _SEH2_GetExceptionInformation()
++# endif
++#endif
+diff --color -urN a/seh0020.c b/seh0020.c
+--- a/seh0020.c	2026-08-29 12:16:09
++++ b/seh0020.c	2026-08-29 12:16:09
+@@ -14,7 +14,7 @@
+ 
+   Counter = 0;
+ 
+-  if (_setjmp(JumpBuffer) == 0) {
++  if (setjmp(JumpBuffer) == 0) {
+     /* set counter = 1 */
+     //(volatile LONG) Counter += 1;
+     *(volatile LONG*)&Counter += 1;
+diff --color -urN a/seh0021.c b/seh0021.c
+--- a/seh0021.c	2026-08-29 12:16:09
++++ b/seh0021.c	2026-08-29 12:16:09
+@@ -14,7 +14,7 @@
+ 
+   Counter = 0;
+ 
+-  if (_setjmp(JumpBuffer) == 0) {
++  if (setjmp(JumpBuffer) == 0) {
+     try {
+       /* set counter = 1 */
+       //(volatile LONG) Counter += 1;
+diff --color -urN a/seh0022.c b/seh0022.c
+--- a/seh0022.c	2026-08-29 12:16:09
++++ b/seh0022.c	2026-08-29 12:16:09
+@@ -15,7 +15,7 @@
+   Counter = 0;
+ 
+   try {
+-    if (_setjmp(JumpBuffer) == 0) {
++    if (setjmp(JumpBuffer) == 0) {
+       /* set counter = 1 */
+       //(volatile LONG) Counter += 1;
+       *(volatile LONG*)&Counter += 1;
+diff --color -urN a/seh0023.c b/seh0023.c
+--- a/seh0023.c	2026-08-29 12:16:09
++++ b/seh0023.c	2026-08-29 12:16:09
+@@ -14,7 +14,7 @@
+ 
+   Counter = 0;
+ 
+-  if (_setjmp(JumpBuffer) == 0) {
++  if (setjmp(JumpBuffer) == 0) {
+     try {
+       try {
+         /* set counter = 1 */
+diff --color -urN a/seh0024.c b/seh0024.c
+--- a/seh0024.c	2026-08-29 12:16:09
++++ b/seh0024.c	2026-08-29 12:16:09
+@@ -6 +6 @@
+-#if defined(_M_MRX000) || defined(_M_PPC) || defined(_ALPHA)
++#if defined(_M_MRX000) || defined(_M_PPC) || defined(_M_ALPHA)
+@@ -26 +26 @@
+-#if defined(_M_MRX000) || defined(_M_PPC) || defined(_ALPHA)
++#if defined(_M_MRX000) || defined(_M_PPC) || defined(_M_ALPHA)
+@@ -30 +30 @@
+-  if (_setjmp(JumpBuffer) == 0)
++  if (setjmp(JumpBuffer) == 0)
+diff --color -urN a/seh0025.c b/seh0025.c
+--- a/seh0025.c	2026-08-29 12:16:09
++++ b/seh0025.c	2026-08-29 12:16:09
+@@ -36,7 +36,7 @@
+ 
+   Counter = 0;
+ 
+-  if (_setjmp(JumpBuffer) == 0) {
++  if (setjmp(JumpBuffer) == 0) {
+     try {
+       try {
+         try {
+diff --color -urN a/seh0026.c b/seh0026.c
+--- a/seh0026.c	2026-08-29 12:16:09
++++ b/seh0026.c	2026-08-29 12:16:09
+@@ -36,7 +36,7 @@
+ 
+   Counter = 0;
+ 
+-  if (_setjmp(JumpBuffer) == 0) {
++  if (setjmp(JumpBuffer) == 0) {
+     try {
+       try {
+         try {

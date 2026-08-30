@@ -1,0 +1,10 @@
+# Imported from the ReactOS tree by `pseh_harness.py --vendor`
+vendor/
+# Per profile, per build-configuration object trees and executables
+build/
+# CMake/Ninja tree for one backend and optimization level
+output-*/
+# Reports, per-test logs and checkpoints
+results/
+# Python bytecode from harness syntax checks
+__pycache__/

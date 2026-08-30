@@ -1,0 +1,11 @@
+Working copy of the ReactOS PSEH implementation and its GCC SEH plugin.
+
+Imported from : /Users/mac/working_dir/reactos-dev4
+  pseh/            <- sdk/lib/pseh
+  gcc_plugin_seh/  <- sdk/tools/gcc_plugin_seh
+Upstream commit: 3f9d70846f8 (main-nt10)
+Imported       : 2026-08-29
+
+These are edited DIRECTLY -- git history is the record of what changed versus
+upstream. Only the Microsoft test corpus under vendor/ is still imported and
+patched, because it is test data we do not intend to modify.
