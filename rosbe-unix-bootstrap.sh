@@ -15,6 +15,8 @@
 #          The ct-ng MinGW-GCC bundle has no macOS host build upstream; if you
 #          need GCC on macOS, `brew install mingw-w64` is the easiest option
 #          (separate version, MSVCRT default).
+# Both   : LLVM-MinGW RISC-V (Clang 24 with the Windows PE/COFF RISC-V target)
+#          as llvm-mingw-riscv24, on hosts that have a published build.
 #
 # The installer always removes the old tree first and downloads fresh archives.
 
@@ -22,6 +24,7 @@ set -eu
 
 LLVM_VERSION=20260826
 LLVM_TRIPLET=ucrt
+LLVM_RISCV_VERSION=20260919
 GCC_VERSION=16.2.0
 GCC_TAG=v16.2
 
@@ -30,6 +33,7 @@ BIN_DIR="${BIN_DIR:-${HOME}/.local/bin}"
 TMP_DIR=""
 
 LLVM_BASE_URL="https://github.com/mstorsjo/llvm-mingw/releases/download/${LLVM_VERSION}"
+LLVM_RISCV_BASE_URL="https://github.com/ahmedarif193/winget-rosbe/releases/download/llvm-mingw-riscv24-${LLVM_RISCV_VERSION}"
 GCC_BASE_URL="https://github.com/ahmedarif193/mingw-gcc16.2/releases/download/${GCC_TAG}"
 
 RED="$(printf '\033[0;31m')"
@@ -54,7 +58,7 @@ banner() {
     printf '%s\n' "${GREEN}RosBE - Unix Bootstrap${NC}"
     printf '%s\n\n' "${GREEN}===============================${NC}"
     printf 'Install root: %s\n' "${INSTALL_ROOT}"
-    printf 'Toolchains:   LLVM-MinGW %s, MinGW-GCC %s\n\n' "${LLVM_VERSION}" "${GCC_VERSION}"
+    printf 'Toolchains:   LLVM-MinGW %s, LLVM-MinGW RISC-V %s, MinGW-GCC %s\n\n' "${LLVM_VERSION}" "${LLVM_RISCV_VERSION}" "${GCC_VERSION}"
 }
 
 detect_host() {
@@ -120,23 +124,29 @@ safe_remove_install_root() {
     mkdir -p "${INSTALL_ROOT}" "${BIN_DIR}"
 }
 
-download() {
+fetch() {
     url="$1"
     dest="$2"
-    name="${dest##*/}"
 
-    info "Downloading ${name}..."
     if command -v curl >/dev/null 2>&1; then
         curl -fL \
             --connect-timeout 30 \
             --max-time 600 \
             --speed-limit 10240 --speed-time 60 \
             --retry 3 --retry-delay 5 \
-            -o "${dest}" "${url}" || fail "Download failed: ${url}"
+            -o "${dest}" "${url}"
     else
-        wget -O "${dest}" "${url}" || fail "Download failed: ${url}"
+        wget -O "${dest}" "${url}"
     fi
+}
 
+download() {
+    url="$1"
+    dest="$2"
+    name="${dest##*/}"
+
+    info "Downloading ${name}..."
+    fetch "${url}" "${dest}" || fail "Download failed: ${url}"
     ok "Downloaded ${name}"
 }
 
@@ -156,6 +166,33 @@ install_llvm_mingw() {
     fi
 
     ok "LLVM-MinGW -> ${target}"
+}
+
+# Separate tree, kept off PATH: it ships its own `clang`, and ReactOS's
+# configure.sh selects it by path for ARCH=riscv64. Host builds are published
+# per platform, so a host without one keeps the rest of the install.
+install_llvm_mingw_riscv() {
+    filename="llvm-mingw-riscv24-${LLVM_RISCV_VERSION}-${LLVM_HOST_PLATFORM}.tar.xz"
+    archive="${TMP_DIR}/${filename}"
+    target="${INSTALL_ROOT}/llvm-mingw-riscv24"
+
+    info "Downloading ${filename}..."
+    if ! fetch "${LLVM_RISCV_BASE_URL}/${filename}" "${archive}"; then
+        warn "No LLVM-MinGW RISC-V ${LLVM_RISCV_VERSION} build for ${LLVM_HOST_PLATFORM}; skipping llvm-mingw-riscv24."
+        return 0
+    fi
+    ok "Downloaded ${filename}"
+
+    info "Extracting LLVM-MinGW RISC-V..."
+    mkdir -p "${target}"
+    tar -xf "${archive}" -C "${target}" --strip-components=1
+    chmod -R u+rwX "${target}" 2>/dev/null || true
+
+    if [ ! -x "${target}/bin/clang" ]; then
+        fail "LLVM-MinGW RISC-V extraction did not produce ${target}/bin/clang"
+    fi
+
+    ok "LLVM-MinGW RISC-V -> ${target}"
 }
 
 install_mingw_gcc_arch() {
@@ -255,6 +292,10 @@ print_summary() {
     # $PATH is intentionally literal — the user copy-pastes this into their shell profile.
     # shellcheck disable=SC2016
     printf '  export PATH="%s:$PATH"\n' "${BIN_DIR}"
+    if [ -x "${INSTALL_ROOT}/llvm-mingw-riscv24/bin/clang" ]; then
+        printf '\nRISC-V toolchain (not on PATH; ReactOS configure.sh uses it for riscv64):\n'
+        printf '  %s/llvm-mingw-riscv24\n' "${INSTALL_ROOT}"
+    fi
     if [ "${HOST_OS}" = "macos" ]; then
         printf '\nNote (macOS): only LLVM-MinGW (Clang/lld) is bundled.\n'
         printf 'For GCC: brew install mingw-w64 (MSVCRT default; not version-matched).\n'
@@ -273,6 +314,7 @@ main() {
     create_tmp_dir
     safe_remove_install_root
     install_llvm_mingw
+    install_llvm_mingw_riscv
     install_mingw_gcc
     strip_macos_quarantine
     write_env_file

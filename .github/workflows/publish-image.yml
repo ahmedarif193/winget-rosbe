@@ -31,6 +31,8 @@ permissions:
 
 jobs:
   build-and-push:
+    # Toolchain releases (llvm-mingw-riscv24-<version>) are not image versions.
+    if: github.event_name != 'release' || startsWith(github.event.release.tag_name, 'v')
     runs-on: ubuntu-latest
     env:
       IMAGE: ghcr.io/${{ github.repository_owner }}/rosbe-builder

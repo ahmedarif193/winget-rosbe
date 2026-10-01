@@ -21,6 +21,7 @@ jobs:
           # rosbe-unix-bootstrap.sh targets /bin/sh — check it as POSIX sh too.
           sh -n rosbe-unix-bootstrap.sh
           bash -n rosbe-unix-bootstrap.sh
+          bash -n scripts/build-llvm-mingw-riscv.sh
           bash -n scripts/manual-submit.sh
           bash -n scripts/package.sh
           bash -n scripts/publish-winget.sh

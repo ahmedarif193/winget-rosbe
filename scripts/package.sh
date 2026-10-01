@@ -39,6 +39,9 @@ LLVM_BASE="https://github.com/mstorsjo/llvm-mingw/releases/download/${LLVM_VERSI
 LLVM_LINUX_URL="${LLVM_BASE}/llvm-mingw-${LLVM_VERSION}-${LLVM_TRIPLET}-ubuntu-22.04-x86_64.tar.xz"
 LLVM_WIN_X64_URL="${LLVM_BASE}/llvm-mingw-${LLVM_VERSION}-${LLVM_TRIPLET}-x86_64.zip"
 
+LLVM_RISCV_BASE="https://github.com/ahmedarif193/winget-rosbe/releases/download/llvm-mingw-riscv24-${LLVM_RISCV_VERSION}"
+LLVM_RISCV_LINUX_URL="${LLVM_RISCV_BASE}/llvm-mingw-riscv24-${LLVM_RISCV_VERSION}-ubuntu-22.04-x86_64.tar.xz"
+
 GCC_BASE="https://github.com/ahmedarif193/mingw-gcc16.2/releases/download/${GCC_TAG}"
 GCC_LINUX_I686_URL="${GCC_BASE}/i686-w64-mingw32.tar.gz"
 GCC_LINUX_X64_URL="${GCC_BASE}/x86_64-w64-mingw32.tar.gz"
@@ -166,6 +169,7 @@ build_bootstrapper_windows() {
 #     cmake-${CMAKE_VERSION}/bin/cmake ...
 #     ninja-${NINJA_VERSION}/ninja
 #     llvm-mingw/bin/clang ...
+#     llvm-mingw-riscv24/bin/clang ...
 #     mingw-gcc/{i686,x86_64,aarch64}-w64-mingw32/...
 package_linux() {
     local pkg="rosbe-${VERSION}-linux-x64"
@@ -192,6 +196,11 @@ package_linux() {
     download "${LLVM_LINUX_URL}" "${CACHE_DIR}/llvm-${LLVM_VERSION}-linux-x64.tar.xz"
     mkdir -p "${staging}/llvm-mingw"
     tar -xf "${CACHE_DIR}/llvm-${LLVM_VERSION}-linux-x64.tar.xz" -C "${staging}/llvm-mingw" --strip-components=1
+
+    # LLVM-MinGW RISC-V (Linux) -> llvm-mingw-riscv24/
+    download "${LLVM_RISCV_LINUX_URL}" "${CACHE_DIR}/llvm-riscv-${LLVM_RISCV_VERSION}-linux-x64.tar.xz"
+    mkdir -p "${staging}/llvm-mingw-riscv24"
+    tar -xf "${CACHE_DIR}/llvm-riscv-${LLVM_RISCV_VERSION}-linux-x64.tar.xz" -C "${staging}/llvm-mingw-riscv24" --strip-components=1
 
     # MinGW-GCC (Linux crosstool-NG) -> mingw-gcc/<triple>/
     for entry in "i686-w64-mingw32:tar.gz:${GCC_LINUX_I686_URL}" \

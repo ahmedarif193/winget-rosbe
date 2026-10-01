@@ -1,0 +1,122 @@
+name: RISC-V toolchain
+
+# Builds the LLVM-MinGW RISC-V host toolchains pinned in scripts/versions.env
+# and uploads them to the llvm-mingw-riscv24-<version> release that
+# rosbe-unix-bootstrap.sh downloads from.
+#
+# Platforms whose archive is already on that release are skipped unless
+# `overwrite` is set, so a rerun only fills in what is missing.
+
+on:
+  workflow_dispatch:
+    inputs:
+      overwrite:
+        description: 'Rebuild and replace archives that are already published'
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.plan.outputs.tag }}
+      matrix: ${{ steps.plan.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - id: plan
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          OVERWRITE: ${{ inputs.overwrite }}
+        run: |
+          # shellcheck source=scripts/versions.env
+          source scripts/versions.env
+          TAG="llvm-mingw-riscv24-${LLVM_RISCV_VERSION}"
+          PUBLISHED="$(gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json assets -q '.assets[].name' 2>/dev/null || true)"
+          MATRIX='[]'
+
+          add() {
+            local asset="llvm-mingw-riscv24-${LLVM_RISCV_VERSION}-$1.tar.xz"
+            if [ "$OVERWRITE" != "true" ] && grep -Fxq "$asset" <<<"$PUBLISHED"; then
+              echo "Already published: $asset"
+              return 0
+            fi
+            echo "To build: $asset"
+            MATRIX="$(jq -c --arg p "$1" --arg r "$2" --arg c "$3" \
+              '. + [{platform: $p, runner: $r, container: $c}]' <<<"$MATRIX")"
+          }
+
+          # Linux archives are built in ubuntu:22.04 so they only need glibc 2.35.
+          add ubuntu-22.04-x86_64  ubuntu-latest    ubuntu:22.04
+          add ubuntu-22.04-aarch64 ubuntu-24.04-arm ubuntu:22.04
+          add macos-universal      macos-14         ''
+
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "matrix=$MATRIX" >> "$GITHUB_OUTPUT"
+
+  build:
+    needs: plan
+    if: needs.plan.outputs.matrix != '[]'
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJson(needs.plan.outputs.matrix) }}
+    runs-on: ${{ matrix.runner }}
+    container: ${{ matrix.container }}
+    timeout-minutes: 350
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build toolchain (Linux)
+        if: runner.os == 'Linux'
+        run: ./scripts/build-llvm-mingw-riscv.sh --install-deps
+
+      - name: Build toolchain (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          brew install ninja
+          ./scripts/build-llvm-mingw-riscv.sh
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: llvm-mingw-riscv24-${{ matrix.platform }}
+          path: dist/toolchain/llvm-mingw-riscv24-*
+          if-no-files-found: error
+          compression-level: 0
+
+  publish:
+    needs: [plan, build]
+    # Publish the platforms that built even if another one failed.
+    if: ${{ !cancelled() && needs.build.result != 'skipped' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      TAG: ${{ needs.plan.outputs.tag }}
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: llvm-mingw-riscv24-*
+          path: dist/toolchain
+          merge-multiple: true
+
+      - name: Upload to the toolchain release
+        run: |
+          shopt -s nullglob
+          files=( dist/toolchain/llvm-mingw-riscv24-* )
+          if [[ ${#files[@]} -eq 0 ]]; then
+            echo "No toolchain archives were built."
+            exit 1
+          fi
+
+          if ! gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release create "$TAG" --repo "$GITHUB_REPOSITORY" \
+              --prerelease --latest=false \
+              --title "LLVM-MinGW RISC-V ${TAG#llvm-mingw-riscv24-}" \
+              --notes "Host toolchain archives installed by rosbe-unix-bootstrap.sh as llvm-mingw-riscv24."
+          fi
+          gh release upload "$TAG" "${files[@]}" --repo "$GITHUB_REPOSITORY" --clobber
