@@ -120,7 +120,9 @@ jobs:
             mkdir -p "$DST"
             for f in "$SRC"/*.yaml; do
               name=$(basename "$f")
-              sed "s|PackageVersion: 1.0.0|PackageVersion: $VERSION|; \
+              sed "s|PackageVersion: 1.0.0|PackageVersion: \"$VERSION\"|; \
+                   s|releases/tag/v1.0.0|releases/tag/v$VERSION|g; \
+                   s|^ReleaseDate:.*|ReleaseDate: $(date -u +%Y-%m-%d)|; \
                    s|rosbe-bootstrapper-1.0.0-win-x64.zip|rosbe-bootstrapper-$VERSION-win-x64.zip|g; \
                    s|releases/download/v1.0.0/|releases/download/v$VERSION/|g" \
                   "$f" > "$DST/$name"
