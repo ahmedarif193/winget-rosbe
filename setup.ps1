@@ -11,6 +11,7 @@
       ninja-<ver>\ninja.exe
       win_flex_bison-<ver>\win_flex.exe, win_bison.exe, flex.exe, bison.exe
       llvm-mingw\bin\clang.exe ...
+      llvm-mingw-riscv24\bin\clang.exe ...   (x86_64 hosts; not meant for PATH)
       mingw-gcc\x86_64-w64-mingw32\bin\x86_64-w64-mingw32-gcc.exe ...
       mingw-gcc\i686-w64-mingw32\bin\i686-w64-mingw32-gcc.exe ...
       mingw-gcc\aarch64-w64-mingw32\bin\aarch64-w64-mingw32-gcc.exe ...
@@ -44,6 +45,9 @@ foreach ($line in Get-Content $VersionsEnv) {
 $LlvmVersion         = $V['LLVM_VERSION']
 $LlvmTriplet         = $V['LLVM_TRIPLET']
 $LlvmBaseUrl         = "https://github.com/mstorsjo/llvm-mingw/releases/download/$LlvmVersion"
+
+$LlvmRiscvVersion    = $V['LLVM_RISCV_VERSION']
+$LlvmRiscvBaseUrl    = "https://github.com/ahmedarif193/winget-rosbe/releases/download/llvm-mingw-riscv24-$LlvmRiscvVersion"
 
 $GccVersion          = $V['GCC_VERSION']
 $GccTag              = $V['GCC_TAG']
@@ -182,6 +186,60 @@ function Setup-LlvmMingw {
     Write-Status "x" "Green" "LLVM-MinGW $LlvmVersion -> $target ($ver)"
 }
 
+# ── LLVM-MinGW RISC-V ─────────────────────────────────────────────────────────
+# Separate tree, kept off PATH: it ships its own clang.exe, and the ReactOS
+# RISC-V build selects it by path. Only an x86_64 host build is published, and
+# a missing or damaged archive keeps the rest of the install.
+function Setup-LlvmMingwRiscv {
+    $target = Join-Path $InstallRoot "llvm-mingw-riscv24"
+    $clangExe = Join-Path $target "bin\clang.exe"
+
+    if (Test-Path $clangExe) {
+        $ver = & $clangExe --version | Select-Object -First 1
+        Write-Status "x" "Green" "LLVM-MinGW RISC-V already installed ($ver)"
+        return
+    }
+
+    if ($HostArch -ne "x86_64") {
+        Write-Status "-" "DarkGray" "LLVM-MinGW RISC-V has no $HostArch host build; skipping llvm-mingw-riscv24"
+        return
+    }
+
+    $filename = "llvm-mingw-riscv24-$LlvmRiscvVersion-windows-x86_64.zip"
+    $archive = Join-Path $CacheDir $filename
+    $checksum = "$archive.sha256"
+    try {
+        # Always refetch the checksum so a cached archive is checked against
+        # what the release holds now.
+        if (Test-Path $checksum) { Remove-Item $checksum -Force }
+        Download-File "$LlvmRiscvBaseUrl/$filename.sha256" $checksum
+        Download-File "$LlvmRiscvBaseUrl/$filename" $archive
+    } catch {
+        Remove-Item $archive, $checksum -Force -ErrorAction SilentlyContinue
+        Write-Status "!" "Yellow" "No LLVM-MinGW RISC-V $LlvmRiscvVersion build for Windows x86_64; skipping llvm-mingw-riscv24"
+        return
+    }
+
+    $expected = ((Get-Content $checksum -TotalCount 1) -split '\s+')[0]
+    $actual = (Get-FileHash $archive -Algorithm SHA256).Hash
+    if ($actual -ne $expected) {
+        Remove-Item $archive, $checksum -Force
+        Write-Status "!" "Yellow" "SHA256 mismatch for $filename; skipping llvm-mingw-riscv24 (rerun to download it again)"
+        return
+    }
+
+    $tmpDir = Join-Path $CacheDir "llvm-riscv-tmp"
+    if (Test-Path $tmpDir) { Remove-Item $tmpDir -Recurse -Force }
+    Extract-Zip $archive $tmpDir
+    $inner = Get-ChildItem $tmpDir | Select-Object -First 1
+    if (Test-Path $target) { Remove-Item $target -Recurse -Force }
+    Move-Item $inner.FullName $target
+    Remove-Item $tmpDir -Recurse -Force -ErrorAction SilentlyContinue
+
+    $ver = & $clangExe --version | Select-Object -First 1
+    Write-Status "x" "Green" "LLVM-MinGW RISC-V $LlvmRiscvVersion -> $target ($ver)"
+}
+
 # ── MinGW-GCC (ct-ng Canadian-cross, native Windows) ─────────────────────────
 # Ships triple-prefixed binaries only (x86_64-w64-mingw32-gcc.exe etc.) and the
 # ct-ng-emitted toolchain.cmake for CMake consumers.
@@ -246,7 +304,7 @@ function Main {
     $installLlvm = -not $GccOnly
     $installGcc  = -not $LlvmOnly
 
-    if ($installLlvm) { Setup-LlvmMingw }
+    if ($installLlvm) { Setup-LlvmMingw; Setup-LlvmMingwRiscv }
     if ($installGcc)  { Setup-MingwGcc }
 
     Write-Host ""
@@ -260,6 +318,11 @@ function Main {
     Write-Host "  Point CMake at your project with either toolchain file:"
     Write-Host "    -DCMAKE_TOOLCHAIN_FILE=$InstallRoot\mingw-gcc\x86_64-w64-mingw32\toolchain.cmake"
     Write-Host "    -DCMAKE_TOOLCHAIN_FILE=<reactos>\toolchain-clang.cmake   (LLVM)"
+    if (Test-Path (Join-Path $InstallRoot "llvm-mingw-riscv24\bin\clang.exe")) {
+        Write-Host ""
+        Write-Host "  RISC-V toolchain (not meant for PATH; select it by path for riscv64):"
+        Write-Host "    $InstallRoot\llvm-mingw-riscv24"
+    }
     Write-Host ""
 }
 

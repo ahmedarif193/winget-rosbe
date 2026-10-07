@@ -41,6 +41,7 @@ LLVM_WIN_X64_URL="${LLVM_BASE}/llvm-mingw-${LLVM_VERSION}-${LLVM_TRIPLET}-x86_64
 
 LLVM_RISCV_BASE="https://github.com/ahmedarif193/winget-rosbe/releases/download/llvm-mingw-riscv24-${LLVM_RISCV_VERSION}"
 LLVM_RISCV_LINUX_URL="${LLVM_RISCV_BASE}/llvm-mingw-riscv24-${LLVM_RISCV_VERSION}-ubuntu-22.04-x86_64.tar.xz"
+LLVM_RISCV_WIN_X64_NAME="llvm-mingw-riscv24-${LLVM_RISCV_VERSION}-windows-x86_64.zip"
 
 GCC_BASE="https://github.com/ahmedarif193/mingw-gcc16.2/releases/download/${GCC_TAG}"
 GCC_LINUX_I686_URL="${GCC_BASE}/i686-w64-mingw32.tar.gz"
@@ -120,6 +121,13 @@ move_extracted_dir() {
 
     chmod -R u+rwX "${dest}" 2>/dev/null || true
     rm -rf "${tmp}"
+}
+
+verify_sha256() {
+    local root="$1" checksum_file="$2"
+    info "Verifying $(basename "${checksum_file}")..."
+    ( cd "${root}" && sha256sum -c --status "$(basename "${checksum_file}")" )
+    ok "Verified $(basename "${checksum_file}")"
 }
 
 verify_sha512() {
@@ -223,6 +231,7 @@ package_linux() {
 #     ninja-${NINJA_VERSION}/ninja.exe
 #     win_flex_bison-${WINFLEXBISON_VERSION}/win_flex.exe, win_bison.exe ...
 #     llvm-mingw/bin/clang.exe ...
+#     llvm-mingw-riscv24/bin/clang.exe ...
 #     mingw-gcc/{x86_64,i686,aarch64}-w64-mingw32/bin/<triple>-gcc.exe ...
 #     qemu-${QEMU_VERSION}/qemu-system-x86_64.exe ...
 package_windows_x64() {
@@ -263,6 +272,19 @@ package_windows_x64() {
     reset_tmp_dir "${CACHE_DIR}/llvm-tmp"
     unzip -qo "${CACHE_DIR}/llvm-${LLVM_VERSION}-win-x64.zip" -d "${CACHE_DIR}/llvm-tmp"
     move_extracted_dir "${CACHE_DIR}/llvm-tmp" "llvm-mingw-*" "${staging}/llvm-mingw"
+
+    # LLVM-MinGW RISC-V (Windows) -> llvm-mingw-riscv24/
+    # Not listed in rosbe-components.json: it ships its own clang.exe, so it
+    # stays off PATH and the ReactOS RISC-V build selects it by path. The
+    # archive comes from the riscv-toolchain workflow, which has to have
+    # published it for LLVM_RISCV_VERSION before this can succeed.
+    download "${LLVM_RISCV_BASE}/${LLVM_RISCV_WIN_X64_NAME}" "${CACHE_DIR}/${LLVM_RISCV_WIN_X64_NAME}"
+    download "${LLVM_RISCV_BASE}/${LLVM_RISCV_WIN_X64_NAME}.sha256" "${CACHE_DIR}/${LLVM_RISCV_WIN_X64_NAME}.sha256"
+    verify_sha256 "${CACHE_DIR}" "${CACHE_DIR}/${LLVM_RISCV_WIN_X64_NAME}.sha256"
+    info "Extracting ${LLVM_RISCV_WIN_X64_NAME}..."
+    reset_tmp_dir "${CACHE_DIR}/llvm-riscv-tmp"
+    unzip -qo "${CACHE_DIR}/${LLVM_RISCV_WIN_X64_NAME}" -d "${CACHE_DIR}/llvm-riscv-tmp"
+    move_extracted_dir "${CACHE_DIR}/llvm-riscv-tmp" "llvm-mingw-riscv24-*" "${staging}/llvm-mingw-riscv24"
 
     # MinGW-GCC (Windows x64-hosted Canadian-cross) -> mingw-gcc/<triple>/
     download "${GCC_WIN_X64_URL}" "${CACHE_DIR}/gcc-${GCC_VERSION}-win-x64.zip"
@@ -333,6 +355,7 @@ trim_bundle() {
         */sysroot/lib/libgphobos* */sysroot/lib32/libgphobos*
     )
     for p in "${rm_paths[@]}"; do
+        # shellcheck disable=SC2086,SC2115 # entries are globs under ${root}
         rm -rf "${root}"/${p} 2>/dev/null || true
     done
 }

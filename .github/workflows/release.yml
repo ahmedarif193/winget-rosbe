@@ -144,7 +144,7 @@ jobs:
             echo "| Component | Version |"
             echo "|-----------|---------|"
             echo "| LLVM-MinGW | $LLVM_VERSION |"
-            echo "| LLVM-MinGW RISC-V (Linux bootstrap and container image) | $LLVM_RISCV_VERSION ($LLVM_RISCV_REPO@${LLVM_RISCV_COMMIT::12}) |"
+            echo "| LLVM-MinGW RISC-V (llvm-mingw-riscv24, not on PATH) | $LLVM_RISCV_VERSION ($LLVM_RISCV_REPO@${LLVM_RISCV_COMMIT::12}) |"
             echo "| MinGW-GCC (ct-ng Canadian-cross) | $GCC_VERSION ($GCC_TAG from ahmedarif193/mingw-gcc16.2) |"
             echo "| CMake | $CMAKE_VERSION |"
             echo "| Ninja | $NINJA_VERSION |"

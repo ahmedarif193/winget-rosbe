@@ -57,6 +57,9 @@ fresh toolchain. On macOS, `com.apple.quarantine` is cleared after extraction
 as a defensive measure for offline (Safari-downloaded) installs — the typical
 `curl | sh` flow doesn't set the xattr in the first place.
 
+The Windows bundle carries the same toolchain as `llvm-mingw-riscv24` next to
+`llvm-mingw`, also off `PATH`.
+
 On Windows, `rosbe install` verifies the downloaded bundle against
 `SHA256SUMS.txt` and the release's GitHub artifact attestation before
 activating it under `%LOCALAPPDATA%\RosBE`.
@@ -89,7 +92,7 @@ for CMake, Ninja, Flex, and Bison.
 | Component | Version |
 |-----------|---------|
 | LLVM-MinGW (Clang + lld + libc++) | 23.1.0 (20260826) |
-| LLVM-MinGW RISC-V (Clang + lld, Unix bootstrap only) | 24.0.0git (20260919) |
+| LLVM-MinGW RISC-V (Clang + lld, kept off `PATH`) | 24.0.0git (20260919) |
 | MinGW-GCC (crosstool-NG Canadian-cross, UCRT) | 16.2.0 |
 | CMake | 3.31.6 |
 | Ninja | 1.12.1 |
@@ -108,7 +111,9 @@ utilities only — no MinGW-w64 CRT or headers.
 - `scripts/build-llvm-mingw-riscv.sh`: builds and packs the LLVM-MinGW RISC-V
   host toolchain pinned in `scripts/versions.env`. The archives live on the
   `llvm-mingw-riscv24-<version>` release; `.github/workflows/riscv-toolchain.yml`
-  builds them for each host platform.
+  builds them for each host platform (Linux x86_64 / aarch64, macOS universal,
+  and Windows x86_64, which is cross-compiled on Linux and then tested on a
+  Windows runner with `scripts/smoke-llvm-mingw-riscv.sh`).
 - `winget/`: local manifest templates used when publishing to `winget-pkgs`.
 
 ## Links

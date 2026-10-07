@@ -20,6 +20,7 @@ for /d %%D in ("!ROSBE_ROOT!\win_flex_bison-*") do (
 )
 
 set "ROSBE_LLVM=!ROSBE_ROOT!\llvm-mingw"
+set "ROSBE_LLVM_RISCV=!ROSBE_ROOT!\llvm-mingw-riscv24"
 set "ROSBE_GCC_X64=!ROSBE_ROOT!\mingw-gcc\x86_64-w64-mingw32"
 set "ROSBE_GCC_X86=!ROSBE_ROOT!\mingw-gcc\i686-w64-mingw32"
 
@@ -41,6 +42,7 @@ if defined ROSBE_NINJA (
     echo   [ ] Ninja
 )
 if exist "!ROSBE_LLVM!\bin\clang.exe" (echo   [x] Clang   - !ROSBE_LLVM!\bin\clang.exe) else (echo   [ ] Clang)
+if exist "!ROSBE_LLVM_RISCV!\bin\clang.exe" (echo   [x] Clang RISC-V - !ROSBE_LLVM_RISCV!\bin\clang.exe) else (echo   [ ] Clang RISC-V)
 if exist "!ROSBE_GCC_X64!\bin\x86_64-w64-mingw32-gcc.exe" (echo   [x] GCC x64 - !ROSBE_GCC_X64!\bin\x86_64-w64-mingw32-gcc.exe) else (echo   [ ] GCC x64)
 if exist "!ROSBE_GCC_X86!\bin\i686-w64-mingw32-gcc.exe" (echo   [x] GCC x86 - !ROSBE_GCC_X86!\bin\i686-w64-mingw32-gcc.exe) else (echo   [ ] GCC x86)
 if defined ROSBE_FLEX_BISON (
