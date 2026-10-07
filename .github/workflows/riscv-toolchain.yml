@@ -2,7 +2,10 @@ name: RISC-V toolchain
 
 # Builds the LLVM-MinGW RISC-V host toolchains pinned in scripts/versions.env
 # and uploads them to the llvm-mingw-riscv24-<version> release that
-# rosbe-unix-bootstrap.sh downloads from.
+# rosbe-unix-bootstrap.sh, setup.ps1 and scripts/package.sh download from.
+#
+# The Windows archive is cross-compiled on Linux, so it is only published
+# after the smoke test passed on a Windows runner.
 #
 # Platforms whose archive is already on that release are skipped unless
 # `overwrite` is set, so a rerun only fills in what is missing.
@@ -24,6 +27,7 @@ jobs:
     outputs:
       tag: ${{ steps.plan.outputs.tag }}
       matrix: ${{ steps.plan.outputs.matrix }}
+      windows: ${{ steps.plan.outputs.windows }}
     steps:
       - uses: actions/checkout@v4
 
@@ -37,25 +41,33 @@ jobs:
           TAG="llvm-mingw-riscv24-${LLVM_RISCV_VERSION}"
           PUBLISHED="$(gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json assets -q '.assets[].name' 2>/dev/null || true)"
           MATRIX='[]'
+          WINDOWS=false
 
+          # add <platform> <archive extension> <runner> <container> [build options]
           add() {
-            local asset="llvm-mingw-riscv24-${LLVM_RISCV_VERSION}-$1.tar.xz"
+            local asset="llvm-mingw-riscv24-${LLVM_RISCV_VERSION}-$1.$2"
             if [ "$OVERWRITE" != "true" ] && grep -Fxq "$asset" <<<"$PUBLISHED"; then
               echo "Already published: $asset"
               return 0
             fi
             echo "To build: $asset"
-            MATRIX="$(jq -c --arg p "$1" --arg r "$2" --arg c "$3" \
-              '. + [{platform: $p, runner: $r, container: $c}]' <<<"$MATRIX")"
+            MATRIX="$(jq -c --arg p "$1" --arg r "$3" --arg c "$4" --arg o "${5:-}" \
+              '. + [{platform: $p, runner: $r, container: $c, options: $o}]' <<<"$MATRIX")"
+            if [ "$1" = windows-x86_64 ]; then WINDOWS=true; fi
           }
 
           # Linux archives are built in ubuntu:22.04 so they only need glibc 2.35.
-          add ubuntu-22.04-x86_64  ubuntu-latest    ubuntu:22.04
-          add ubuntu-22.04-aarch64 ubuntu-24.04-arm ubuntu:22.04
-          add macos-universal      macos-14         ''
+          # The Windows archive is cross-compiled in the same container.
+          add ubuntu-22.04-x86_64  tar.xz ubuntu-latest    ubuntu:22.04
+          add ubuntu-22.04-aarch64 tar.xz ubuntu-24.04-arm ubuntu:22.04
+          add macos-universal      tar.xz macos-14         ''
+          add windows-x86_64       zip    ubuntu-latest    ubuntu:22.04 --host=windows-x86_64
 
-          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
-          echo "matrix=$MATRIX" >> "$GITHUB_OUTPUT"
+          {
+            echo "tag=$TAG"
+            echo "matrix=$MATRIX"
+            echo "windows=$WINDOWS"
+          } >> "$GITHUB_OUTPUT"
 
   build:
     needs: plan
@@ -72,7 +84,11 @@ jobs:
 
       - name: Build toolchain (Linux)
         if: runner.os == 'Linux'
-        run: ./scripts/build-llvm-mingw-riscv.sh --install-deps
+        env:
+          BUILD_OPTIONS: ${{ matrix.options }}
+        run: |
+          # shellcheck disable=SC2086 # zero or more options, split on purpose
+          ./scripts/build-llvm-mingw-riscv.sh --install-deps $BUILD_OPTIONS
 
       - name: Build toolchain (macOS)
         if: runner.os == 'macOS'
@@ -86,9 +102,55 @@ jobs:
           path: dist/toolchain/llvm-mingw-riscv24-*
           if-no-files-found: error
           compression-level: 0
+          # A rerun replaces the archive of an earlier attempt.
+          overwrite: true
+
+  # The cross-compiled Windows archive never ran on the machine that built
+  # it: install it the way setup.ps1 does and run the smoke test for real.
+  smoke-windows:
+    needs: [plan, build]
+    # Runs even if another platform failed to build; with no Windows archive
+    # to download, this job fails and the publish job leaves Windows out.
+    if: ${{ !cancelled() && needs.plan.outputs.windows == 'true' }}
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: llvm-mingw-riscv24-windows-x86_64
+          path: dist/toolchain
+
+      - name: Verify checksum and extract
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $sum = Get-Item dist/toolchain/llvm-mingw-riscv24-*-windows-x86_64.zip.sha256
+          $expected, $name = (Get-Content $sum.FullName -TotalCount 1) -split '\s+', 2
+          $name = $name.TrimStart('*')
+          if ($name -ne $sum.BaseName) { throw "Checksum file names '$name', expected '$($sum.BaseName)'" }
+          $zip = Join-Path $sum.DirectoryName $name
+          $actual = (Get-FileHash $zip -Algorithm SHA256).Hash.ToLowerInvariant()
+          if ($actual -ne $expected) { throw "SHA256 mismatch for ${name}: $actual" }
+
+          $dest = Join-Path $env:RUNNER_TEMP 'llvm-mingw-riscv24'
+          Expand-Archive -Path $zip -DestinationPath $dest
+          $root = Join-Path $dest ($name -replace '\.zip$', '')
+          & (Join-Path $root 'bin\clang.exe') --version
+          if ($LASTEXITCODE -ne 0) { throw "clang.exe exited with $LASTEXITCODE" }
+          "TOOLCHAIN_DIR=$root" >> $env:GITHUB_ENV
+
+      - name: Smoke test
+        shell: bash
+        run: |
+          # Keep Git for Windows' MinGW runtime DLLs off PATH: the tools must
+          # start with nothing but the system directory.
+          PATH="/usr/bin:$(cygpath -u "$SYSTEMROOT")/System32" \
+            ./scripts/smoke-llvm-mingw-riscv.sh "$(cygpath -u "$TOOLCHAIN_DIR")"
 
   publish:
-    needs: [plan, build]
+    needs: [plan, build, smoke-windows]
     # Publish the platforms that built even if another one failed.
     if: ${{ !cancelled() && needs.build.result != 'skipped' }}
     runs-on: ubuntu-latest
@@ -97,6 +159,7 @@ jobs:
     env:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       TAG: ${{ needs.plan.outputs.tag }}
+      WINDOWS_SMOKE: ${{ needs.smoke-windows.result }}
     steps:
       - uses: actions/download-artifact@v4
         with:
@@ -107,11 +170,25 @@ jobs:
       - name: Upload to the toolchain release
         run: |
           shopt -s nullglob
-          files=( dist/toolchain/llvm-mingw-riscv24-* )
-          if [[ ${#files[@]} -eq 0 ]]; then
+          cd dist/toolchain
+
+          # An archive from this or an earlier attempt of the run is only
+          # good if the Windows smoke test of this attempt passed.
+          if [[ "$WINDOWS_SMOKE" != "success" ]]; then
+            for f in llvm-mingw-riscv24-*-windows-*; do
+              echo "::warning::Not publishing $f: Windows smoke test result is '$WINDOWS_SMOKE'."
+              rm -f "$f"
+            done
+          fi
+
+          sums=( llvm-mingw-riscv24-*.sha256 )
+          if [[ ${#sums[@]} -eq 0 ]]; then
             echo "No toolchain archives were built."
             exit 1
           fi
+          sha256sum --check --strict "${sums[@]}"
+
+          files=( llvm-mingw-riscv24-* )
 
           if ! gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
             gh release create "$TAG" --repo "$GITHUB_REPOSITORY" \
