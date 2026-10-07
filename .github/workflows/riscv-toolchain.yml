@@ -185,6 +185,7 @@ jobs:
           path: cross
 
       - name: Build toolchain
+        shell: bash
         run: |
           options=()
           if [ -f "cross/$MINGW_NAME.tar.xz" ]; then
