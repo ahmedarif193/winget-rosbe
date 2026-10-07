@@ -91,13 +91,18 @@ for CMake, Ninja, Flex, and Bison.
 
 | Component | Version |
 |-----------|---------|
-| LLVM-MinGW (Clang + lld + libc++) | 23.1.0 (20260826) |
+| LLVM-MinGW (Clang + lld + libc++) | 24.0.0git (20261007) |
 | LLVM-MinGW RISC-V (Clang + lld, kept off `PATH`) | 24.0.0git (20261007) |
 | MinGW-GCC (crosstool-NG Canadian-cross, UCRT) | 16.2.0 |
 | CMake | 3.31.6 |
 | Ninja | 1.12.1 |
 | Flex + Bison (winflexbison) | 2.6.4 / 3.8.2 |
 | QEMU (Windows bundle) | 11.1.0 |
+
+Both LLVM toolchains are built from one LLVM fork
+([sjljeh/llvm-project](https://github.com/sjljeh/llvm-project), branch
+`libernt`). LLVM-MinGW also carries the PowerPC Windows NT backend
+(`powerpcle-pc-windows-msvc`, compiler and linker only).
 
 Targets: `i686`, `x86_64`, and `aarch64` (Windows UCRT). The RISC-V toolchain
 targets `riscv64-w64-windows-gnu` and ships the compiler, linker, and binary
@@ -114,6 +119,9 @@ utilities only — no MinGW-w64 CRT or headers.
   builds them for each host platform (Linux x86_64 / aarch64, macOS universal,
   and Windows x86_64, which is cross-compiled on Linux and then tested on a
   Windows runner with `scripts/smoke-llvm-mingw-riscv.sh`).
+- `.github/workflows/llvm-mingw.yml`: builds the LLVM-MinGW toolchain for each
+  host platform from the LLVM fork and build recipe pinned in
+  `scripts/versions.env`, and publishes it on the `llvm-mingw-<version>` release.
 - `winget/`: local manifest templates used when publishing to `winget-pkgs`.
 
 ## Links

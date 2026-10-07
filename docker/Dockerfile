@@ -27,7 +27,7 @@ RUN test "$(command -v x86_64-w64-mingw32-gcc)" = /opt/rosbe/mingw-gcc/x86_64-w6
     test "$(x86_64-w64-mingw32-gcc -dumpfullversion -dumpversion)" = 16.2.0 && \
     test "$(i686-w64-mingw32-gcc -dumpfullversion -dumpversion)" = 16.2.0 && \
     test "$(aarch64-w64-mingw32-gcc -dumpfullversion -dumpversion)" = 16.2.0 && \
-    clang --version | grep -F 'clang version 23.1.0' && \
+    clang --version | grep -F 'clang version 24.' && \
     /opt/rosbe/llvm-mingw-riscv24/bin/clang --version | grep -F 'clang version 24.' && \
     /opt/rosbe/llvm-mingw-riscv24/bin/clang --print-targets | grep -F 'riscv64'
 

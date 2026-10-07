@@ -35,7 +35,7 @@ error(){ echo -e "${RED}[FAIL]${NC} $*"; exit 1; }
 # shellcheck source=versions.env
 source "${SCRIPT_DIR}/versions.env"
 
-LLVM_BASE="https://github.com/mstorsjo/llvm-mingw/releases/download/${LLVM_VERSION}"
+LLVM_BASE="https://github.com/ahmedarif193/winget-rosbe/releases/download/llvm-mingw-${LLVM_VERSION}"
 LLVM_LINUX_URL="${LLVM_BASE}/llvm-mingw-${LLVM_VERSION}-${LLVM_TRIPLET}-ubuntu-22.04-x86_64.tar.xz"
 LLVM_WIN_X64_URL="${LLVM_BASE}/llvm-mingw-${LLVM_VERSION}-${LLVM_TRIPLET}-x86_64.zip"
 

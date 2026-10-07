@@ -188,7 +188,7 @@ fetch_cross_toolchain() {
     else
         local name="llvm-mingw-${LLVM_VERSION}-${LLVM_TRIPLET}-${MINGW_PLATFORM}"
         local archive="${CACHE_DIR}/${name}.tar.xz"
-        local url="https://github.com/mstorsjo/llvm-mingw/releases/download/${LLVM_VERSION}/${name}.tar.xz"
+        local url="https://github.com/ahmedarif193/winget-rosbe/releases/download/llvm-mingw-${LLVM_VERSION}/${name}.tar.xz"
         MINGW_DIR="${WORK_DIR}/${name}"
 
         if [[ ! -f "${archive}" ]]; then

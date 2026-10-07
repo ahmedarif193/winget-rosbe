@@ -44,7 +44,7 @@ foreach ($line in Get-Content $VersionsEnv) {
 
 $LlvmVersion         = $V['LLVM_VERSION']
 $LlvmTriplet         = $V['LLVM_TRIPLET']
-$LlvmBaseUrl         = "https://github.com/mstorsjo/llvm-mingw/releases/download/$LlvmVersion"
+$LlvmBaseUrl         = "https://github.com/ahmedarif193/winget-rosbe/releases/download/llvm-mingw-$LlvmVersion"
 
 $LlvmRiscvVersion    = $V['LLVM_RISCV_VERSION']
 $LlvmRiscvBaseUrl    = "https://github.com/ahmedarif193/winget-rosbe/releases/download/llvm-mingw-riscv24-$LlvmRiscvVersion"
@@ -170,7 +170,8 @@ function Setup-LlvmMingw {
         return
     }
 
-    $filename = "llvm-mingw-$LlvmVersion-$LlvmTriplet-$HostArch.zip"
+    # Only an x86_64 host build is published; ARM64 Windows runs it emulated.
+    $filename = "llvm-mingw-$LlvmVersion-$LlvmTriplet-x86_64.zip"
     $archive = Join-Path $CacheDir $filename
     Download-File "$LlvmBaseUrl/$filename" $archive
 

@@ -22,7 +22,7 @@
 
 set -eu
 
-LLVM_VERSION=20260826
+LLVM_VERSION=20261007
 LLVM_TRIPLET=ucrt
 LLVM_RISCV_VERSION=20261007
 GCC_VERSION=16.2.0
@@ -32,7 +32,7 @@ INSTALL_ROOT="${INSTALL_ROOT:-${HOME}/.local/opt/rosbe}"
 BIN_DIR="${BIN_DIR:-${HOME}/.local/bin}"
 TMP_DIR=""
 
-LLVM_BASE_URL="https://github.com/mstorsjo/llvm-mingw/releases/download/${LLVM_VERSION}"
+LLVM_BASE_URL="https://github.com/ahmedarif193/winget-rosbe/releases/download/llvm-mingw-${LLVM_VERSION}"
 LLVM_RISCV_BASE_URL="https://github.com/ahmedarif193/winget-rosbe/releases/download/llvm-mingw-riscv24-${LLVM_RISCV_VERSION}"
 GCC_BASE_URL="https://github.com/ahmedarif193/mingw-gcc16.2/releases/download/${GCC_TAG}"
 
