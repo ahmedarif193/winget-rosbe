@@ -25,6 +25,7 @@ jobs:
           bash -n scripts/manual-submit.sh
           bash -n scripts/package.sh
           bash -n scripts/publish-winget.sh
+          bash -n scripts/smoke-llvm-mingw-riscv.sh
           bash -n scripts/verify-bootstrapper-e2e.sh
 
       - name: Test bootstrapper
