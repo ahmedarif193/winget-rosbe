@@ -92,7 +92,7 @@ for CMake, Ninja, Flex, and Bison.
 | Component | Version |
 |-----------|---------|
 | LLVM-MinGW (Clang + lld + libc++) | 23.1.0 (20260826) |
-| LLVM-MinGW RISC-V (Clang + lld, kept off `PATH`) | 24.0.0git (20260919) |
+| LLVM-MinGW RISC-V (Clang + lld, kept off `PATH`) | 24.0.0git (20261007) |
 | MinGW-GCC (crosstool-NG Canadian-cross, UCRT) | 16.2.0 |
 | CMake | 3.31.6 |
 | Ninja | 1.12.1 |
