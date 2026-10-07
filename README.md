@@ -14,7 +14,7 @@ A cross-build toolchain for Windows, Linux, and macOS, with unofficial support f
 Windows:
 
 ```powershell
-winget install AhmedArif.RosBE
+winget install ReactOS.RosBE
 rosbe install
 rosbe enable
 ```

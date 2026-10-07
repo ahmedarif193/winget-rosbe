@@ -114,8 +114,8 @@ jobs:
       - name: Materialize winget manifest for this version
         run: |
           set -e
-          SRC=winget/manifests/a/AhmedArif/RosBE/1.0.0
-          DST=winget/manifests/a/AhmedArif/RosBE/$VERSION
+          SRC=winget/manifests/r/ReactOS/RosBE/1.0.0
+          DST=winget/manifests/r/ReactOS/RosBE/$VERSION
           if [ ! -d "$DST" ]; then
             mkdir -p "$DST"
             for f in "$SRC"/*.yaml; do
@@ -129,7 +129,7 @@ jobs:
           ASSET="rosbe-bootstrapper-$VERSION-win-x64.zip"
           HASH=$(awk -v asset="$ASSET" '$2==asset {print toupper($1)}' dist/SHA256SUMS.txt)
           sed -i "s|InstallerSha256:.*|InstallerSha256: $HASH|" \
-              "$DST/AhmedArif.RosBE.installer.yaml"
+              "$DST/ReactOS.RosBE.installer.yaml"
 
       - name: Compose release body
         id: body
@@ -153,7 +153,7 @@ jobs:
             echo ""
             echo "### Install"
             echo '```'
-            echo "winget install AhmedArif.RosBE"
+            echo "winget install ReactOS.RosBE"
             echo "rosbe install"
             echo "rosbe enable"
             echo '```'
@@ -188,7 +188,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: winget-manifests
-          path: winget/manifests/a/AhmedArif/RosBE/${{ needs.gate.outputs.version }}/
+          path: winget/manifests/r/ReactOS/RosBE/${{ needs.gate.outputs.version }}/
 
   publish-winget:
     needs: [gate, package]
@@ -202,7 +202,7 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           name: winget-manifests
-          path: winget/manifests/a/AhmedArif/RosBE/${{ needs.gate.outputs.version }}/
+          path: winget/manifests/r/ReactOS/RosBE/${{ needs.gate.outputs.version }}/
 
       - name: Install deps
         run: sudo apt-get install -y -qq uuid-runtime
