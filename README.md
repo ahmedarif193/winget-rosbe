@@ -119,8 +119,8 @@ utilities only — no MinGW-w64 CRT or headers.
   builds them for each host platform (Linux x86_64 / aarch64, macOS universal,
   and Windows x86_64, which is cross-compiled on Linux and then tested on a
   Windows runner with `scripts/smoke-llvm-mingw-riscv.sh`).
-- `.github/workflows/llvm-mingw.yml`: builds the LLVM-MinGW toolchain for each
-  host platform from the LLVM fork and build recipe pinned in
+- `.github/workflows/riscv-toolchain.yml` also builds the LLVM-MinGW toolchain
+  for each host platform from the LLVM fork and build recipe pinned in
   `scripts/versions.env`, and publishes it on the `llvm-mingw-<version>` release.
 - `winget/`: local manifest templates used when publishing to `winget-pkgs`.
 
