@@ -109,6 +109,7 @@ cat > "$BODY_FILE" <<EOF
 - **Post-install**: \`rosbe install\` then \`rosbe enable\`
 
 Managed toolchain versions:
+- LLVM (every LiberNT target): \`${LLVM_NATIVE_VERSION}\`
 - LLVM-MinGW: \`${LLVM_VERSION}\`
 - MinGW-GCC (ct-ng Canadian-cross): \`${GCC_VERSION}\` (${GCC_TAG} from ahmedarif193/mingw-gcc16.2)
 - CMake: \`${CMAKE_VERSION}\`
