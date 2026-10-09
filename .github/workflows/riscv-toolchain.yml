@@ -7,7 +7,9 @@ name: Toolchains
 #   llvm-mingw-<version>          Clang, lld and the MinGW-w64 runtimes for
 #                                 i686, x86_64, armv7, aarch64 and arm64ec,
 #                                 plus the PowerPC backend (mingw-* jobs).
-#   llvm-mingw-riscv24-<version>  the RISC-V host toolchains.
+#   llvm-<version>                Clang and lld for every LiberNT target, with
+#                                 the LLVM runtime sources the LiberNT build
+#                                 compiles its C++ runtimes from.
 #
 # Archives already on those releases are skipped unless `overwrite` is set, so
 # a rerun only fills in what is missing.
@@ -55,14 +57,14 @@ jobs:
         run: |
           # shellcheck source=scripts/versions.env
           source scripts/versions.env
-          TAG="llvm-mingw-riscv24-${LLVM_RISCV_VERSION}"
+          TAG="llvm-${LLVM_NATIVE_VERSION}"
           PUBLISHED="$(gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json assets -q '.assets[].name' 2>/dev/null || true)"
           MATRIX='[]'
           WINDOWS=false
 
           # add <platform> <archive extension> [<runner> <container>]
           add() {
-            local asset="llvm-mingw-riscv24-${LLVM_RISCV_VERSION}-$1.$2"
+            local asset="llvm-${LLVM_NATIVE_VERSION}-$1.$2"
             if [ "$OVERWRITE" != "true" ] && grep -Fxq "$asset" <<<"$PUBLISHED"; then
               echo "Already published: $asset"
               return 0
@@ -147,18 +149,18 @@ jobs:
 
       - name: Build toolchain (Linux)
         if: runner.os == 'Linux'
-        run: ./scripts/build-llvm-mingw-riscv.sh --install-deps
+        run: ./scripts/build-llvm.sh --install-deps
 
       - name: Build toolchain (macOS)
         if: runner.os == 'macOS'
         run: |
           brew install ninja
-          ./scripts/build-llvm-mingw-riscv.sh
+          ./scripts/build-llvm.sh
 
       - uses: actions/upload-artifact@v4
         with:
-          name: llvm-mingw-riscv24-${{ matrix.platform }}
-          path: dist/toolchain/llvm-mingw-riscv24-*
+          name: llvm-toolchain-${{ matrix.platform }}
+          path: dist/toolchain/llvm-*
           if-no-files-found: error
           compression-level: 0
           # A rerun replaces the archive of an earlier attempt.
@@ -196,12 +198,12 @@ jobs:
             rm "cross/$MINGW_NAME.tar.xz"
             options+=( "--mingw=$PWD/cross/$MINGW_NAME" )
           fi
-          ./scripts/build-llvm-mingw-riscv.sh --install-deps --host=windows-x86_64 "${options[@]}"
+          ./scripts/build-llvm.sh --install-deps --host=windows-x86_64 "${options[@]}"
 
       - uses: actions/upload-artifact@v4
         with:
-          name: llvm-mingw-riscv24-windows-x86_64
-          path: dist/toolchain/llvm-mingw-riscv24-*
+          name: llvm-toolchain-windows-x86_64
+          path: dist/toolchain/llvm-*
           if-no-files-found: error
           compression-level: 0
           overwrite: true
@@ -220,14 +222,14 @@ jobs:
 
       - uses: actions/download-artifact@v4
         with:
-          name: llvm-mingw-riscv24-windows-x86_64
+          name: llvm-toolchain-windows-x86_64
           path: dist/toolchain
 
       - name: Verify checksum and extract
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
-          $sum = Get-Item dist/toolchain/llvm-mingw-riscv24-*-windows-x86_64.zip.sha256
+          $sum = Get-Item dist/toolchain/llvm-*-windows-x86_64.zip.sha256
           $expected, $name = (Get-Content $sum.FullName -TotalCount 1) -split '\s+', 2
           $name = $name.TrimStart('*')
           if ($name -ne $sum.BaseName) { throw "Checksum file names '$name', expected '$($sum.BaseName)'" }
@@ -235,7 +237,7 @@ jobs:
           $actual = (Get-FileHash $zip -Algorithm SHA256).Hash.ToLowerInvariant()
           if ($actual -ne $expected) { throw "SHA256 mismatch for ${name}: $actual" }
 
-          $dest = Join-Path $env:RUNNER_TEMP 'llvm-mingw-riscv24'
+          $dest = Join-Path $env:RUNNER_TEMP 'llvm'
           Expand-Archive -Path $zip -DestinationPath $dest
           $root = Join-Path $dest ($name -replace '\.zip$', '')
           & (Join-Path $root 'bin\clang.exe') --version
@@ -248,7 +250,7 @@ jobs:
           # Keep Git for Windows' MinGW runtime DLLs off PATH: the tools must
           # start with nothing but the system directory.
           PATH="/usr/bin:$(cygpath -u "$SYSTEMROOT")/System32" \
-            ./scripts/smoke-llvm-mingw-riscv.sh "$(cygpath -u "$TOOLCHAIN_DIR")"
+            ./scripts/smoke-llvm.sh "$(cygpath -u "$TOOLCHAIN_DIR")"
 
   publish:
     needs: [plan, build, build-windows, smoke-windows]
@@ -264,7 +266,7 @@ jobs:
     steps:
       - uses: actions/download-artifact@v4
         with:
-          pattern: llvm-mingw-riscv24-*
+          pattern: llvm-toolchain-*
           path: dist/toolchain
           merge-multiple: true
 
@@ -276,26 +278,26 @@ jobs:
           # An archive from this or an earlier attempt of the run is only
           # good if the Windows smoke test of this attempt passed.
           if [[ "$WINDOWS_SMOKE" != "success" ]]; then
-            for f in llvm-mingw-riscv24-*-windows-*; do
+            for f in llvm-*-windows-*; do
               echo "::warning::Not publishing $f: Windows smoke test result is '$WINDOWS_SMOKE'."
               rm -f "$f"
             done
           fi
 
-          sums=( llvm-mingw-riscv24-*.sha256 )
+          sums=( llvm-*.sha256 )
           if [[ ${#sums[@]} -eq 0 ]]; then
             echo "No toolchain archives were built."
             exit 1
           fi
           sha256sum --check --strict "${sums[@]}"
 
-          files=( llvm-mingw-riscv24-* )
+          files=( llvm-* )
 
           if ! gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
             gh release create "$TAG" --repo "$GITHUB_REPOSITORY" \
               --prerelease --latest=false \
-              --title "LLVM-MinGW RISC-V ${TAG#llvm-mingw-riscv24-}" \
-              --notes "Host toolchain archives installed by rosbe-unix-bootstrap.sh as llvm-mingw-riscv24."
+              --title "LLVM ${TAG#llvm-}" \
+              --notes "Host toolchain archives installed by rosbe-unix-bootstrap.sh as llvm."
           fi
           gh release upload "$TAG" "${files[@]}" --repo "$GITHUB_REPOSITORY" --clobber
 

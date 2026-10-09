@@ -1,24 +1,25 @@
 #!/bin/bash
-# Builds the LLVM-MinGW RISC-V host toolchain (Clang 24 with the Windows
-# PE/COFF RISC-V target) pinned in scripts/versions.env, and packs it for the
-# llvm-mingw-riscv24-<version> toolchain release. rosbe-unix-bootstrap.sh
-# installs that archive as <root>/llvm-mingw-riscv24.
+# Builds the RosBE LLVM toolchain (Clang 24 for every LiberNT target: x86,
+# AArch64, ARM, RISC-V and PowerPC PE/COFF) pinned in scripts/versions.env,
+# and packs it for the llvm-<version> toolchain release with the LLVM runtime
+# sources the LiberNT build compiles its C++ runtimes from (src/llvm-project).
+# rosbe-unix-bootstrap.sh installs that archive as <root>/llvm.
 #
 # Run it on the baseline host of the platform the archive is named after:
 #   Linux : inside ubuntu:22.04 (glibc 2.35), for example
 #             podman run --rm -v "$PWD:/src" -w /src ubuntu:22.04 \
-#                 scripts/build-llvm-mingw-riscv.sh --install-deps
+#                 scripts/build-llvm.sh --install-deps
 #   macOS : on the host; produces a universal (arm64 + x86_64) build.
 #
 # The Windows archive is cross-compiled on Linux with the LLVM-MinGW release
 # pinned as LLVM_VERSION (downloaded unless --mingw points at one):
-#             scripts/build-llvm-mingw-riscv.sh --install-deps --host=windows-x86_64
+#             scripts/build-llvm.sh --install-deps --host=windows-x86_64
 # Its binaries cannot run on the build host, so the smoke test only runs when
 # Wine is installed; the workflow repeats it on a Windows runner.
 #
 # Outputs in dist/toolchain/ (.zip for Windows hosts, .tar.xz otherwise):
-#   llvm-mingw-riscv24-<version>-<platform>.tar.xz
-#   llvm-mingw-riscv24-<version>-<platform>.tar.xz.sha256
+#   llvm-<version>-<platform>.tar.xz
+#   llvm-<version>-<platform>.tar.xz.sha256
 
 set -euo pipefail
 
@@ -37,7 +38,7 @@ error(){ echo -e "${RED}[FAIL]${NC} $*"; exit 1; }
 source "${SCRIPT_DIR}/versions.env"
 
 SOURCE_DIR=""
-WORK_DIR="${CACHE_DIR}/llvm-riscv-${LLVM_RISCV_VERSION}"
+WORK_DIR="${CACHE_DIR}/llvm-${LLVM_NATIVE_VERSION}"
 JOBS=""
 INSTALL_DEPS=0
 TARGET_HOST=""
@@ -61,7 +62,7 @@ while [[ $# -gt 0 ]]; do
     shift
 done
 
-# Same component set as the toolchain the ReactOS RISC-V port is built with.
+# The tools the LiberNT Clang build drives.
 COMPONENTS=(
     clang clang-resource-headers lld
     llvm-ar llvm-ranlib llvm-dlltool llvm-lib
@@ -151,13 +152,13 @@ fetch_source() {
     if [[ -n "${SOURCE_DIR}" ]]; then
         [[ -f "${SOURCE_DIR}/llvm/CMakeLists.txt" ]] || error "Not an llvm-project tree: ${SOURCE_DIR}"
         SOURCE_DIR="$(cd "${SOURCE_DIR}" && pwd)"
-        info "Using LLVM source at ${SOURCE_DIR} (expected ${LLVM_RISCV_COMMIT})"
+        info "Using LLVM source at ${SOURCE_DIR} (expected ${LLVM_NATIVE_COMMIT})"
         return 0
     fi
 
-    local archive="${CACHE_DIR}/llvm-project-${LLVM_RISCV_COMMIT}.tar.gz"
-    local url="https://github.com/${LLVM_RISCV_REPO}/archive/${LLVM_RISCV_COMMIT}.tar.gz"
-    SOURCE_DIR="${WORK_DIR}/llvm-project-${LLVM_RISCV_COMMIT}"
+    local archive="${CACHE_DIR}/llvm-project-${LLVM_NATIVE_COMMIT}.tar.gz"
+    local url="https://github.com/${LLVM_NATIVE_REPO}/archive/${LLVM_NATIVE_COMMIT}.tar.gz"
+    SOURCE_DIR="${WORK_DIR}/llvm-project-${LLVM_NATIVE_COMMIT}"
 
     if [[ ! -f "${archive}" ]]; then
         info "Downloading $(basename "${archive}")..."
@@ -259,10 +260,10 @@ build_toolchain() {
         -DCMAKE_INSTALL_PREFIX="${STAGE_DIR}" \
         -DLLVM_ENABLE_ASSERTIONS=ON \
         -DLLVM_ENABLE_PROJECTS="clang;lld" \
-        -DLLVM_TARGETS_TO_BUILD="RISCV;X86" \
+        -DLLVM_TARGETS_TO_BUILD="${LLVM_NATIVE_TARGETS//,/;}" \
         -DLLVM_DISTRIBUTION_COMPONENTS="${components}" \
-        -DLLVM_FORCE_VC_REPOSITORY="https://github.com/${LLVM_RISCV_REPO}.git" \
-        -DLLVM_FORCE_VC_REVISION="${LLVM_RISCV_COMMIT}" \
+        -DLLVM_FORCE_VC_REPOSITORY="https://github.com/${LLVM_NATIVE_REPO}.git" \
+        -DLLVM_FORCE_VC_REVISION="${LLVM_NATIVE_COMMIT}" \
         -DLLVM_ENABLE_BINDINGS=OFF \
         -DLLVM_ENABLE_ZLIB=OFF \
         -DLLVM_ENABLE_ZSTD=OFF \
@@ -287,8 +288,26 @@ build_toolchain() {
     fi
 
     cp "${SOURCE_DIR}/llvm/LICENSE.TXT" "${STAGE_DIR}/LICENSE.TXT"
+    stage_runtime_sources
     write_toolchain_manifest
     ok "Built ${PKG}"
+}
+
+# The LiberNT build compiles libc++, libc++abi, libunwind and the compiler-rt
+# builtins for each target from the sources of this exact revision.
+RUNTIME_SOURCE_DIRS=(
+    cmake runtimes libcxx libcxxabi libunwind libc compiler-rt third-party
+    llvm/cmake llvm/utils
+)
+
+stage_runtime_sources() {
+    local dest="${STAGE_DIR}/src/llvm-project" d
+    rm -rf "${dest}"
+    for d in "${RUNTIME_SOURCE_DIRS[@]}"; do
+        mkdir -p "${dest}/$(dirname "${d}")"
+        cp -R "${SOURCE_DIR}/${d}" "${dest}/${d}"
+    done
+    ok "Runtime sources -> src/llvm-project"
 }
 
 write_toolchain_manifest() {
@@ -299,10 +318,12 @@ write_toolchain_manifest() {
     done
     cat > "${STAGE_DIR}/native-toolchain.json" <<EOF
 {
-  "version": "${LLVM_RISCV_VERSION}",
+  "version": "${LLVM_NATIVE_VERSION}",
   "host": "${HOST_PLATFORM}",
-  "source": "https://github.com/${LLVM_RISCV_REPO}",
-  "revision": "${LLVM_RISCV_COMMIT}",
+  "source": "https://github.com/${LLVM_NATIVE_REPO}",
+  "revision": "${LLVM_NATIVE_COMMIT}",
+  "targets": "${LLVM_NATIVE_TARGETS}",
+  "runtime_source": "src/llvm-project",
   "components": [
 ${list}
   ]
@@ -354,12 +375,12 @@ verify_windows_portability() {
 # ReactOS RISC-V toolchain file drives them.
 smoke_test() {
     if [[ "${HOST_OS}" != "windows" ]]; then
-        "${SCRIPT_DIR}/smoke-llvm-mingw-riscv.sh" "${STAGE_DIR}"
+        "${SCRIPT_DIR}/smoke-llvm.sh" "${STAGE_DIR}"
     elif command -v wine &>/dev/null; then
         WINEPREFIX="${WORK_DIR}/wine-${HOST_PLATFORM}" WINEDEBUG=-all \
-            "${SCRIPT_DIR}/smoke-llvm-mingw-riscv.sh" --launcher=wine "${STAGE_DIR}"
+            "${SCRIPT_DIR}/smoke-llvm.sh" --launcher=wine "${STAGE_DIR}"
     else
-        info "Wine is not installed: skipping the smoke test (run smoke-llvm-mingw-riscv.sh on Windows)."
+        info "Wine is not installed: skipping the smoke test (run smoke-llvm.sh on Windows)."
     fi
 }
 
@@ -396,7 +417,7 @@ package_toolchain() {
 }
 
 main() {
-    echo -e "${GREEN}RosBE - LLVM-MinGW RISC-V toolchain builder v${LLVM_RISCV_VERSION}${NC}"
+    echo -e "${GREEN}RosBE - LLVM toolchain builder v${LLVM_NATIVE_VERSION}${NC}"
     echo ""
 
     detect_host
@@ -407,7 +428,7 @@ main() {
 
     mkdir -p "${OUT_DIR}" "${CACHE_DIR}" "${WORK_DIR}"
     WORK_DIR="$(cd "${WORK_DIR}" && pwd)"
-    PKG="llvm-mingw-riscv24-${LLVM_RISCV_VERSION}-${HOST_PLATFORM}"
+    PKG="llvm-${LLVM_NATIVE_VERSION}-${HOST_PLATFORM}"
     STAGE_DIR="${WORK_DIR}/stage/${PKG}"
 
     # A failed run must not leave an earlier archive behind to be published.
