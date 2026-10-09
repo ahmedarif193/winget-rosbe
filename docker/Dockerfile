@@ -19,8 +19,6 @@ COPY docker/entrypoint.sh /usr/local/bin/entrypoint.sh
 RUN chmod +x /usr/local/bin/entrypoint.sh
 
 ENV ROSBE_ROOT=/opt/rosbe \
-    LLVM_MINGW_ROOT=/opt/rosbe/llvm-mingw \
-    REACTOS_CLANG_LLVM_MINGW_ROOT=/opt/rosbe/llvm-mingw \
     PATH=/opt/rosbe/mingw-gcc/x86_64-w64-mingw32/bin:/opt/rosbe/mingw-gcc/i686-w64-mingw32/bin:/opt/rosbe/mingw-gcc/aarch64-w64-mingw32/bin:/opt/rosbe/llvm-mingw/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 
 RUN test "$(command -v x86_64-w64-mingw32-gcc)" = /opt/rosbe/mingw-gcc/x86_64-w64-mingw32/bin/x86_64-w64-mingw32-gcc && \
@@ -29,7 +27,11 @@ RUN test "$(command -v x86_64-w64-mingw32-gcc)" = /opt/rosbe/mingw-gcc/x86_64-w6
     test "$(aarch64-w64-mingw32-gcc -dumpfullversion -dumpversion)" = 16.2.0 && \
     clang --version | grep -F 'clang version 24.' && \
     /opt/rosbe/llvm-mingw-riscv24/bin/clang --version | grep -F 'clang version 24.' && \
-    /opt/rosbe/llvm-mingw-riscv24/bin/clang --print-targets | grep -F 'riscv64'
+    /opt/rosbe/llvm-mingw-riscv24/bin/clang --print-targets | grep -F 'riscv64' && \
+    /opt/rosbe/llvm/bin/clang --version | grep -F 'clang version 24.' && \
+    /opt/rosbe/llvm/bin/clang --print-targets | grep -F 'riscv64' && \
+    /opt/rosbe/llvm/bin/clang --print-targets | grep -F 'ppc32le' && \
+    test -f /opt/rosbe/llvm/src/llvm-project/runtimes/CMakeLists.txt
 
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
 CMD ["bash"]

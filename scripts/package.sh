@@ -39,6 +39,10 @@ LLVM_BASE="https://github.com/ahmedarif193/winget-rosbe/releases/download/llvm-m
 LLVM_LINUX_URL="${LLVM_BASE}/llvm-mingw-${LLVM_VERSION}-${LLVM_TRIPLET}-ubuntu-22.04-x86_64.tar.xz"
 LLVM_WIN_X64_URL="${LLVM_BASE}/llvm-mingw-${LLVM_VERSION}-${LLVM_TRIPLET}-x86_64.zip"
 
+LLVM_NATIVE_BASE="https://github.com/ahmedarif193/winget-rosbe/releases/download/llvm-${LLVM_NATIVE_VERSION}"
+LLVM_NATIVE_LINUX_NAME="llvm-${LLVM_NATIVE_VERSION}-ubuntu-22.04-x86_64.tar.xz"
+LLVM_NATIVE_WIN_X64_NAME="llvm-${LLVM_NATIVE_VERSION}-windows-x86_64.zip"
+
 LLVM_RISCV_BASE="https://github.com/ahmedarif193/winget-rosbe/releases/download/llvm-mingw-riscv24-${LLVM_RISCV_VERSION}"
 LLVM_RISCV_LINUX_URL="${LLVM_RISCV_BASE}/llvm-mingw-riscv24-${LLVM_RISCV_VERSION}-ubuntu-22.04-x86_64.tar.xz"
 LLVM_RISCV_WIN_X64_NAME="llvm-mingw-riscv24-${LLVM_RISCV_VERSION}-windows-x86_64.zip"
@@ -178,6 +182,7 @@ build_bootstrapper_windows() {
 #     ninja-${NINJA_VERSION}/ninja
 #     llvm-mingw/bin/clang ...
 #     llvm-mingw-riscv24/bin/clang ...
+#     llvm/bin/clang ...
 #     mingw-gcc/{i686,x86_64,aarch64}-w64-mingw32/...
 package_linux() {
     local pkg="rosbe-${VERSION}-linux-x64"
@@ -210,6 +215,13 @@ package_linux() {
     mkdir -p "${staging}/llvm-mingw-riscv24"
     tar -xf "${CACHE_DIR}/llvm-riscv-${LLVM_RISCV_VERSION}-linux-x64.tar.xz" -C "${staging}/llvm-mingw-riscv24" --strip-components=1
 
+    # LLVM (Linux) -> llvm/
+    download "${LLVM_NATIVE_BASE}/${LLVM_NATIVE_LINUX_NAME}" "${CACHE_DIR}/${LLVM_NATIVE_LINUX_NAME}"
+    download "${LLVM_NATIVE_BASE}/${LLVM_NATIVE_LINUX_NAME}.sha256" "${CACHE_DIR}/${LLVM_NATIVE_LINUX_NAME}.sha256"
+    verify_sha256 "${CACHE_DIR}" "${CACHE_DIR}/${LLVM_NATIVE_LINUX_NAME}.sha256"
+    mkdir -p "${staging}/llvm"
+    tar -xf "${CACHE_DIR}/${LLVM_NATIVE_LINUX_NAME}" -C "${staging}/llvm" --strip-components=1
+
     # MinGW-GCC (Linux crosstool-NG) -> mingw-gcc/<triple>/
     for entry in "i686-w64-mingw32:tar.gz:${GCC_LINUX_I686_URL}" \
                  "x86_64-w64-mingw32:tar.gz:${GCC_LINUX_X64_URL}" \
@@ -232,6 +244,7 @@ package_linux() {
 #     win_flex_bison-${WINFLEXBISON_VERSION}/win_flex.exe, win_bison.exe ...
 #     llvm-mingw/bin/clang.exe ...
 #     llvm-mingw-riscv24/bin/clang.exe ...
+#     llvm/bin/clang.exe ...
 #     mingw-gcc/{x86_64,i686,aarch64}-w64-mingw32/bin/<triple>-gcc.exe ...
 #     qemu-${QEMU_VERSION}/qemu-system-x86_64.exe ...
 package_windows_x64() {
@@ -285,6 +298,17 @@ package_windows_x64() {
     reset_tmp_dir "${CACHE_DIR}/llvm-riscv-tmp"
     unzip -qo "${CACHE_DIR}/${LLVM_RISCV_WIN_X64_NAME}" -d "${CACHE_DIR}/llvm-riscv-tmp"
     move_extracted_dir "${CACHE_DIR}/llvm-riscv-tmp" "llvm-mingw-riscv24-*" "${staging}/llvm-mingw-riscv24"
+
+    # LLVM (Windows) -> llvm/
+    # Not listed in rosbe-components.json either: LiberNT configure selects
+    # it by path for every Clang build.
+    download "${LLVM_NATIVE_BASE}/${LLVM_NATIVE_WIN_X64_NAME}" "${CACHE_DIR}/${LLVM_NATIVE_WIN_X64_NAME}"
+    download "${LLVM_NATIVE_BASE}/${LLVM_NATIVE_WIN_X64_NAME}.sha256" "${CACHE_DIR}/${LLVM_NATIVE_WIN_X64_NAME}.sha256"
+    verify_sha256 "${CACHE_DIR}" "${CACHE_DIR}/${LLVM_NATIVE_WIN_X64_NAME}.sha256"
+    info "Extracting ${LLVM_NATIVE_WIN_X64_NAME}..."
+    reset_tmp_dir "${CACHE_DIR}/llvm-native-tmp"
+    unzip -qo "${CACHE_DIR}/${LLVM_NATIVE_WIN_X64_NAME}" -d "${CACHE_DIR}/llvm-native-tmp"
+    move_extracted_dir "${CACHE_DIR}/llvm-native-tmp" "llvm-${LLVM_NATIVE_VERSION}-*" "${staging}/llvm"
 
     # MinGW-GCC (Windows x64-hosted Canadian-cross) -> mingw-gcc/<triple>/
     download "${GCC_WIN_X64_URL}" "${CACHE_DIR}/gcc-${GCC_VERSION}-win-x64.zip"

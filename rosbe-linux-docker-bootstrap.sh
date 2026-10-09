@@ -198,12 +198,9 @@ if ! "$ROSBE_DOCKER_HOME/rosbe-docker.sh" ensure-image; then
     export _ROSBE_OLD_PATH="$PATH"
     . "$_rosbe_host/rosbe-env.sh"
     export ROSBE_DOCKER_ACTIVE=1
-    export REACTOS_CLANG_LLVM_MINGW_ROOT="$ROSBE_ROOT/llvm-mingw"
-    export LLVM_MINGW_ROOT="$ROSBE_ROOT/llvm-mingw"
     rosbe_disable() {
         [ -n "${_ROSBE_OLD_PATH:-}" ] && export PATH="$_ROSBE_OLD_PATH"
         unset _ROSBE_OLD_PATH ROSBE_DOCKER_ACTIVE ROSBE_ROOT
-        unset REACTOS_CLANG_LLVM_MINGW_ROOT LLVM_MINGW_ROOT
         unset -f rosbe_disable 2>/dev/null || true
         echo "rosbe: disabled"
     }
@@ -220,8 +217,6 @@ export ROSBE_DOCKER_ACTIVE=1
 # Container-side RosBE paths. configure.sh checks ROSBE_DOCKER_ACTIVE and
 # uses /opt/rosbe/* + skips host -x validation when set.
 export ROSBE_ROOT=/opt/rosbe
-export REACTOS_CLANG_LLVM_MINGW_ROOT=/opt/rosbe/llvm-mingw
-export LLVM_MINGW_ROOT=/opt/rosbe/llvm-mingw
 
 rosbe_disable() {
     if [ -n "${_ROSBE_OLD_PATH:-}" ]; then
@@ -229,7 +224,6 @@ rosbe_disable() {
     fi
     unset _ROSBE_OLD_PATH
     unset ROSBE_DOCKER_ACTIVE ROSBE_ROOT
-    unset REACTOS_CLANG_LLVM_MINGW_ROOT LLVM_MINGW_ROOT
     unset -f rosbe_disable 2>/dev/null || true
     echo "rosbe: disabled"
 }

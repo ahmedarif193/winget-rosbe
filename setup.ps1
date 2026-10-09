@@ -12,6 +12,7 @@
       win_flex_bison-<ver>\win_flex.exe, win_bison.exe, flex.exe, bison.exe
       llvm-mingw\bin\clang.exe ...
       llvm-mingw-riscv24\bin\clang.exe ...   (x86_64 hosts; not meant for PATH)
+      llvm\bin\clang.exe ...                 (x86_64 hosts; not meant for PATH)
       mingw-gcc\x86_64-w64-mingw32\bin\x86_64-w64-mingw32-gcc.exe ...
       mingw-gcc\i686-w64-mingw32\bin\i686-w64-mingw32-gcc.exe ...
       mingw-gcc\aarch64-w64-mingw32\bin\aarch64-w64-mingw32-gcc.exe ...
@@ -48,6 +49,9 @@ $LlvmBaseUrl         = "https://github.com/ahmedarif193/winget-rosbe/releases/do
 
 $LlvmRiscvVersion    = $V['LLVM_RISCV_VERSION']
 $LlvmRiscvBaseUrl    = "https://github.com/ahmedarif193/winget-rosbe/releases/download/llvm-mingw-riscv24-$LlvmRiscvVersion"
+
+$LlvmNativeVersion   = $V['LLVM_NATIVE_VERSION']
+$LlvmNativeBaseUrl   = "https://github.com/ahmedarif193/winget-rosbe/releases/download/llvm-$LlvmNativeVersion"
 
 $GccVersion          = $V['GCC_VERSION']
 $GccTag              = $V['GCC_TAG']
@@ -241,6 +245,51 @@ function Setup-LlvmMingwRiscv {
     Write-Status "x" "Green" "LLVM-MinGW RISC-V $LlvmRiscvVersion -> $target ($ver)"
 }
 
+# ── LLVM ──────────────────────────────────────────────────────────────────────
+# The toolchain the LiberNT Clang build uses for every architecture: plain
+# Clang and lld, with the LLVM runtime sources (src\llvm-project) the build
+# compiles its C++ runtimes from. Kept off PATH; configure selects it by path.
+function Setup-Llvm {
+    $target = Join-Path $InstallRoot "llvm"
+    $clangExe = Join-Path $target "bin\clang.exe"
+
+    if (Test-Path $clangExe) {
+        $ver = & $clangExe --version | Select-Object -First 1
+        Write-Status "x" "Green" "LLVM already installed ($ver)"
+        return
+    }
+
+    if ($HostArch -ne "x86_64") {
+        Write-Status "-" "DarkGray" "LLVM has no $HostArch host build; skipping llvm"
+        return
+    }
+
+    $filename = "llvm-$LlvmNativeVersion-windows-x86_64.zip"
+    $archive = Join-Path $CacheDir $filename
+    $checksum = "$archive.sha256"
+    if (Test-Path $checksum) { Remove-Item $checksum -Force }
+    Download-File "$LlvmNativeBaseUrl/$filename.sha256" $checksum
+    Download-File "$LlvmNativeBaseUrl/$filename" $archive
+
+    $expected = ((Get-Content $checksum -TotalCount 1) -split '\s+')[0]
+    $actual = (Get-FileHash $archive -Algorithm SHA256).Hash
+    if ($actual -ne $expected) {
+        Remove-Item $archive, $checksum -Force
+        throw "SHA256 mismatch for $filename (rerun to download it again)"
+    }
+
+    $tmpDir = Join-Path $CacheDir "llvm-tmp"
+    if (Test-Path $tmpDir) { Remove-Item $tmpDir -Recurse -Force }
+    Extract-Zip $archive $tmpDir
+    $inner = Get-ChildItem $tmpDir | Select-Object -First 1
+    if (Test-Path $target) { Remove-Item $target -Recurse -Force }
+    Move-Item $inner.FullName $target
+    Remove-Item $tmpDir -Recurse -Force -ErrorAction SilentlyContinue
+
+    $ver = & $clangExe --version | Select-Object -First 1
+    Write-Status "x" "Green" "LLVM $LlvmNativeVersion -> $target ($ver)"
+}
+
 # ── MinGW-GCC (ct-ng Canadian-cross, native Windows) ─────────────────────────
 # Ships triple-prefixed binaries only (x86_64-w64-mingw32-gcc.exe etc.) and the
 # ct-ng-emitted toolchain.cmake for CMake consumers.
@@ -305,7 +354,7 @@ function Main {
     $installLlvm = -not $GccOnly
     $installGcc  = -not $LlvmOnly
 
-    if ($installLlvm) { Setup-LlvmMingw; Setup-LlvmMingwRiscv }
+    if ($installLlvm) { Setup-Llvm; Setup-LlvmMingw; Setup-LlvmMingwRiscv }
     if ($installGcc)  { Setup-MingwGcc }
 
     Write-Host ""
@@ -319,6 +368,11 @@ function Main {
     Write-Host "  Point CMake at your project with either toolchain file:"
     Write-Host "    -DCMAKE_TOOLCHAIN_FILE=$InstallRoot\mingw-gcc\x86_64-w64-mingw32\toolchain.cmake"
     Write-Host "    -DCMAKE_TOOLCHAIN_FILE=<reactos>\toolchain-clang.cmake   (LLVM)"
+    if (Test-Path (Join-Path $InstallRoot "llvm\bin\clang.exe")) {
+        Write-Host ""
+        Write-Host "  LLVM toolchain (not meant for PATH; LiberNT configure uses it for every Clang build):"
+        Write-Host "    $InstallRoot\llvm"
+    }
     if (Test-Path (Join-Path $InstallRoot "llvm-mingw-riscv24\bin\clang.exe")) {
         Write-Host ""
         Write-Host "  RISC-V toolchain (not meant for PATH; select it by path for riscv64):"

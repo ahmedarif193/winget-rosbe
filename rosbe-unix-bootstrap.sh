@@ -17,6 +17,9 @@
 #          (separate version, MSVCRT default).
 # Both   : LLVM-MinGW RISC-V (Clang 24 with the Windows PE/COFF RISC-V target)
 #          as llvm-mingw-riscv24, on hosts that have a published build.
+# Both   : LLVM (Clang 24 and lld for every LiberNT target, with the LLVM
+#          runtime sources the LiberNT build compiles its C++ runtimes from)
+#          as llvm.
 #
 # The installer always removes the old tree first and downloads fresh archives.
 
@@ -25,6 +28,7 @@ set -eu
 LLVM_VERSION=20261007
 LLVM_TRIPLET=ucrt
 LLVM_RISCV_VERSION=20261007
+LLVM_NATIVE_VERSION=20261009
 GCC_VERSION=16.2.0
 GCC_TAG=v16.2
 
@@ -34,6 +38,7 @@ TMP_DIR=""
 
 LLVM_BASE_URL="https://github.com/ahmedarif193/winget-rosbe/releases/download/llvm-mingw-${LLVM_VERSION}"
 LLVM_RISCV_BASE_URL="https://github.com/ahmedarif193/winget-rosbe/releases/download/llvm-mingw-riscv24-${LLVM_RISCV_VERSION}"
+LLVM_NATIVE_BASE_URL="https://github.com/ahmedarif193/winget-rosbe/releases/download/llvm-${LLVM_NATIVE_VERSION}"
 GCC_BASE_URL="https://github.com/ahmedarif193/mingw-gcc16.2/releases/download/${GCC_TAG}"
 
 RED="$(printf '\033[0;31m')"
@@ -195,6 +200,27 @@ install_llvm_mingw_riscv() {
     ok "LLVM-MinGW RISC-V -> ${target}"
 }
 
+# The LLVM toolchain the LiberNT Clang build uses for every architecture: plain
+# Clang and lld, with the LLVM runtime sources (src/llvm-project) the build
+# compiles its C++ runtimes from. Kept off PATH; configure.sh selects it by path.
+install_llvm() {
+    filename="llvm-${LLVM_NATIVE_VERSION}-${LLVM_HOST_PLATFORM}.tar.xz"
+    archive="${TMP_DIR}/${filename}"
+    target="${INSTALL_ROOT}/llvm"
+
+    download "${LLVM_NATIVE_BASE_URL}/${filename}" "${archive}"
+    info "Extracting LLVM..."
+    mkdir -p "${target}"
+    tar -xf "${archive}" -C "${target}" --strip-components=1
+    chmod -R u+rwX "${target}" 2>/dev/null || true
+
+    if [ ! -x "${target}/bin/clang" ] || [ ! -f "${target}/src/llvm-project/runtimes/CMakeLists.txt" ]; then
+        fail "LLVM extraction did not produce ${target}/bin/clang and its runtime sources"
+    fi
+
+    ok "LLVM -> ${target}"
+}
+
 install_mingw_gcc_arch() {
     archive_name="$1"
     ext="$2"
@@ -292,6 +318,8 @@ print_summary() {
     # $PATH is intentionally literal — the user copy-pastes this into their shell profile.
     # shellcheck disable=SC2016
     printf '  export PATH="%s:$PATH"\n' "${BIN_DIR}"
+    printf '\nLLVM toolchain (not on PATH; LiberNT configure.sh uses it for every Clang build):\n'
+    printf '  %s/llvm\n' "${INSTALL_ROOT}"
     if [ -x "${INSTALL_ROOT}/llvm-mingw-riscv24/bin/clang" ]; then
         printf '\nRISC-V toolchain (not on PATH; ReactOS configure.sh uses it for riscv64):\n'
         printf '  %s/llvm-mingw-riscv24\n' "${INSTALL_ROOT}"
@@ -315,6 +343,7 @@ main() {
     safe_remove_install_root
     install_llvm_mingw
     install_llvm_mingw_riscv
+    install_llvm
     install_mingw_gcc
     strip_macos_quarantine
     write_env_file

@@ -46,19 +46,24 @@ The bootstrap detects:
 - **Linux x86_64 / aarch64** — installs LLVM-MinGW plus the ct-ng MinGW-GCC toolchains for `i686`, `x86_64`, and `aarch64` Windows targets.
 - **macOS Intel / Apple Silicon** — installs the LLVM-MinGW universal binary (Clang + lld + libc++). The ct-ng GCC bundle has no upstream macOS host build; if you need GCC, run `brew install mingw-w64` (separate version, MSVCRT default).
 
-On hosts with a published build it also installs the LLVM-MinGW RISC-V
-toolchain as `~/.local/opt/rosbe/llvm-mingw-riscv24`. That tree is not added
-to `PATH` (it ships its own `clang`); ReactOS's `configure.sh` selects it by
-path for `ARCH=riscv64`. A host without a published build skips it with a
-warning and keeps the rest of the install.
+On hosts with a published build it also installs the LLVM toolchain as
+`~/.local/opt/rosbe/llvm`: plain Clang and lld for x86, ARM, AArch64, RISC-V
+and PowerPC, with the LLVM runtime sources in `src/llvm-project`. LiberNT's
+`configure.sh` selects it by path for every Clang build and compiles libc++,
+libc++abi, libunwind and the compiler-rt builtins from those sources against
+its own SDK. It is not added to `PATH`. Older LiberNT revisions still use
+`llvm-mingw` and the LLVM-MinGW RISC-V toolchain at
+`~/.local/opt/rosbe/llvm-mingw-riscv24`, which the bootstrap keeps installing
+during the transition. A host without a published build skips a toolchain
+with a warning and keeps the rest of the install.
 
 The script always replaces any previous tree at `~/.local/opt/rosbe` with a
 fresh toolchain. On macOS, `com.apple.quarantine` is cleared after extraction
 as a defensive measure for offline (Safari-downloaded) installs — the typical
 `curl | sh` flow doesn't set the xattr in the first place.
 
-The Windows bundle carries the same toolchain as `llvm-mingw-riscv24` next to
-`llvm-mingw`, also off `PATH`.
+The Windows bundle carries the same toolchains as `llvm` and
+`llvm-mingw-riscv24` next to `llvm-mingw`, also off `PATH`.
 
 On Windows, `rosbe install` verifies the downloaded bundle against
 `SHA256SUMS.txt` and the release's GitHub artifact attestation before
@@ -113,12 +118,12 @@ utilities only — no MinGW-w64 CRT or headers.
 - `bootstrapper/`: Rust source for the Windows `rosbe.exe` bootstrapper.
 - `scripts/package.sh`: produces the Windows toolchain ZIP, `rosbe.exe`, the
   winget bootstrapper ZIP, and `SHA256SUMS.txt`.
-- `scripts/build-llvm-mingw-riscv.sh`: builds and packs the LLVM-MinGW RISC-V
-  host toolchain pinned in `scripts/versions.env`. The archives live on the
-  `llvm-mingw-riscv24-<version>` release; `.github/workflows/riscv-toolchain.yml`
-  builds them for each host platform (Linux x86_64 / aarch64, macOS universal,
-  and Windows x86_64, which is cross-compiled on Linux and then tested on a
-  Windows runner with `scripts/smoke-llvm-mingw-riscv.sh`).
+- `scripts/build-llvm.sh`: builds and packs the LLVM host toolchain pinned in
+  `scripts/versions.env` (`LLVM_NATIVE_*`). The archives live on the
+  `llvm-<version>` release; `.github/workflows/riscv-toolchain.yml` builds them
+  for each host platform (Linux x86_64 / aarch64, macOS universal, and Windows
+  x86_64, which is cross-compiled on Linux and then tested on a Windows runner
+  with `scripts/smoke-llvm.sh`).
 - `.github/workflows/riscv-toolchain.yml` also builds the LLVM-MinGW toolchain
   for each host platform from the LLVM fork and build recipe pinned in
   `scripts/versions.env`, and publishes it on the `llvm-mingw-<version>` release.

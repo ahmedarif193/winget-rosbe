@@ -145,6 +145,7 @@ jobs:
             echo "|-----------|---------|"
             echo "| LLVM-MinGW | $LLVM_VERSION |"
             echo "| LLVM-MinGW RISC-V (llvm-mingw-riscv24, not on PATH) | $LLVM_RISCV_VERSION ($LLVM_RISCV_REPO@${LLVM_RISCV_COMMIT::12}) |"
+            echo "| LLVM (llvm, every LiberNT Clang target, not on PATH) | $LLVM_NATIVE_VERSION ($LLVM_NATIVE_REPO@${LLVM_NATIVE_COMMIT::12}, $LLVM_NATIVE_TARGETS) |"
             echo "| MinGW-GCC (ct-ng Canadian-cross) | $GCC_VERSION ($GCC_TAG from ahmedarif193/mingw-gcc16.2) |"
             echo "| CMake | $CMAKE_VERSION |"
             echo "| Ninja | $NINJA_VERSION |"
