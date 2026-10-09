@@ -1,7 +1,7 @@
-# yaml-language-server: $schema=https://aka.ms/winget-manifest.defaultLocale.1.6.0.schema.json
+# yaml-language-server: $schema=https://aka.ms/winget-manifest.defaultLocale.1.12.0.schema.json
 
 PackageIdentifier: ReactOS.RosBE
-PackageVersion: 1.0.0
+PackageVersion: "1.0.0"
 PackageLocale: en-US
 Publisher: Ahmed Arif
 PublisherUrl: https://github.com/ahmedarif193
@@ -20,6 +20,8 @@ Description: |-
   to add the active toolchain directories to PATH.
 
   Managed in this version:
+    - LLVM (Clang) 24             - llvm 20261009, one toolchain for every LiberNT target
+                                    (x86, ARM, AArch64, RISC-V, PowerPC)
     - LLVM-MinGW (Clang) 24.0.0   - llvm-mingw 20261007 (UCRT), plus a RISC-V toolchain
     - MinGW-GCC                  16.2.0    - crosstool-NG Canadian-cross (UCRT)
     - CMake                      3.31.6
@@ -45,5 +47,6 @@ Tags:
   - ninja
   - development
   - operating-system
+ReleaseNotesUrl: https://github.com/ahmedarif193/winget-rosbe/releases/tag/v1.0.0
 ManifestType: defaultLocale
-ManifestVersion: 1.6.0
+ManifestVersion: 1.12.0
