@@ -305,7 +305,7 @@ stage_runtime_sources() {
     rm -rf "${dest}"
     for d in "${RUNTIME_SOURCE_DIRS[@]}"; do
         mkdir -p "${dest}/$(dirname "${d}")"
-        cp -R "${SOURCE_DIR}/${d}" "${dest}/${d}"
+        cp -RL "${SOURCE_DIR}/${d}" "${dest}/${d}"
     done
     ok "Runtime sources -> src/llvm-project"
 }
