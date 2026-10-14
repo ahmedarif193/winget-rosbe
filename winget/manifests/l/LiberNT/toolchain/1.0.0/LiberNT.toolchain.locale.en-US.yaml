@@ -1,13 +1,13 @@
 # yaml-language-server: $schema=https://aka.ms/winget-manifest.defaultLocale.1.12.0.schema.json
 
-PackageIdentifier: ReactOS.RosBE
+PackageIdentifier: LiberNT.toolchain
 PackageVersion: "1.0.0"
 PackageLocale: en-US
-Publisher: Ahmed Arif
-PublisherUrl: https://github.com/ahmedarif193
+Publisher: LiberNT
+PublisherUrl: https://libernt.com
 PublisherSupportUrl: https://github.com/ahmedarif193/winget-rosbe/issues
 Author: Ahmed Arif
-PackageName: RosBE
+PackageName: LiberNT toolchain
 PackageUrl: https://github.com/ahmedarif193/winget-rosbe
 License: MIT
 LicenseUrl: https://github.com/ahmedarif193/winget-rosbe/blob/main/LICENSE
